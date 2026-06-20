@@ -97,5 +97,8 @@ class SerialStub : public Print {
 
 extern SerialStub Serial;
 
+// HWCDC is an alias for the Serial port (used in Logging.h)
+using HWCDC = SerialStub;
+
 #include "ESP.h"
 #include "SPI.h"

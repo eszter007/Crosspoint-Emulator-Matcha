@@ -103,25 +103,16 @@ add_executable(crosspoint_emulator
   ${CROSSPOINT_LIB_CPP}
 )
 
+# Automatically add all lib subdirectories to include path
+file(GLOB LIB_DIRS "${CROSSPOINT_ROOT}/lib/*/")
+set(LIB_INCLUDES "${CROSSPOINT_ROOT}/src" "${CROSSPOINT_ROOT}/lib")
+foreach(LIB_DIR ${LIB_DIRS})
+  list(APPEND LIB_INCLUDES "${LIB_DIR}")
+endforeach()
+
 target_include_directories(crosspoint_emulator PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/sim/include
-  ${CROSSPOINT_ROOT}/src
-  ${CROSSPOINT_ROOT}/lib
-  ${CROSSPOINT_ROOT}/lib/GfxRenderer
-  ${CROSSPOINT_ROOT}/lib/Epub
-  ${CROSSPOINT_ROOT}/lib/Txt
-  ${CROSSPOINT_ROOT}/lib/Xtc
-  ${CROSSPOINT_ROOT}/lib/EpdFont
-  ${CROSSPOINT_ROOT}/lib/Utf8
-  ${CROSSPOINT_ROOT}/lib/FsHelpers
-  ${CROSSPOINT_ROOT}/lib/ZipFile
-  ${CROSSPOINT_ROOT}/lib/Serialization
-  ${CROSSPOINT_ROOT}/lib/JpegToBmpConverter
-  ${CROSSPOINT_ROOT}/lib/KOReaderSync
-  ${CROSSPOINT_ROOT}/lib/OpdsParser
-  ${CROSSPOINT_ROOT}/lib/miniz
-  ${CROSSPOINT_ROOT}/lib/expat
-  ${CROSSPOINT_ROOT}/lib/picojpeg
+  ${LIB_INCLUDES}
   ${CROSSPOINT_ROOT}/lib/Epub/Epub
   ${CROSSPOINT_ROOT}/lib/Epub/Epub/parsers
   ${CROSSPOINT_ROOT}/lib/Epub/Epub/hyphenation

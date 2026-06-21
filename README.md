@@ -35,6 +35,7 @@ The Crosspoint Native Emulator provides a complete simulation environment for th
 - **Display**: SDL2 window (480×800, rotated from logical 800×480)
 - **Storage**: Local directory (`./sdcard/`) mapped to virtual SD card
 - **Input**: Keyboard mapped to device buttons
+- **Images**: JPEG and PNG decoding via stb_image — book covers, thumbnails, and inline EPUB images all render
 - **Networking**: Stubbed (WiFi, OTA updates not available)
 
 This allows rapid UI development, testing, and debugging without needing physical hardware or flashing firmware.
@@ -270,9 +271,12 @@ If you want web server screens to compile (they're stubbed but won't crash):
 
 The build process:
 - Compiles all Crosspoint application sources (`src/*.cpp`)
-- Compiles Crosspoint libraries (GfxRenderer, Epub, Txt, Xtc, fonts, etc.)
-- Compiles emulator HAL stubs (`sim/src/*.cpp`)
+- Compiles Crosspoint libraries (GfxRenderer, Epub, Txt, Xtc, fonts, I18n, Dict, MiniBidi, etc.)
+- Auto-discovers all `lib/` subdirectories for include paths
+- Compiles emulator HAL stubs (`sim/src/*.cpp`) including image decoders and fork compatibility stubs
 - Links everything into `crosspoint_emulator` executable
+
+**C++ standard**: C++20 (required by some firmware forks).
 
 **Build time**: Typically 1-3 minutes depending on hardware.
 
@@ -401,13 +405,14 @@ The emulator is built to **behave like the real device** so that timing, respons
 |--------|-------------|----------|
 | **CPU** | Single core: thumbnail generation and UI share one core; yields in image code so the UI can respond. | Single main thread: prewarm runs one EPUB per frame; image conversion yields every 8 rows. |
 | **SPI bus** | Display and SD card share one SPI bus; display update and file I/O cannot run concurrently. | Display and SD file I/O use a shared mutex so they are serialized. |
+| **Image decoding** | JPEG/PNG covers and inline images decoded on-device. | Decoded via stb_image with area-average downscale and Atkinson dithering to 1/2-bit grayscale BMP (matches device output format). |
 
 **How the emulator addresses single-core and shared-SPI behavior**
 
 - **Single core:** The emulator does not use a background thread for thumbnail generation. Prewarm runs on the main thread, one EPUB per main-loop iteration, so the UI (event pump and `loop()`) runs between thumbnails. Inside image conversion (e.g. scaling and dithering to BMP), the emulator yields every 8 rows so that even during a single thumbnail the UI can get control. That matches the need to share one 160 MHz core between image work and the UI on the real device.
 - **Shared SPI:** On hardware, the display and SD card share one SPI bus, so doing file I/O while the display is updating (or the reverse) is unsafe. The emulator simulates that constraint by serializing all display updates and all SD file operations behind a single mutex: no display transfer and no file read/write run at the same time. The same approach—a shared lock or policy that prevents concurrent display and SD use of the bus—can be applied in the device firmware.
 
-The emulator’s image conversion and SPI handling live in the sim HAL (`image_to_bmp.cpp`, `sim_spi_bus`, `sim_display`, `sim_storage`). To get the same responsive UI and safe bus usage on the real device, the Crosspoint firmware can adopt the same patterns: periodic yields in the device’s thumbnail/image path and a single serialization point for SPI (display and SD) in the device HAL or drivers.
+The emulator’s image conversion, image decoding, and SPI handling live in the sim HAL (`image_to_bmp.cpp`, `image_decoder_stubs.cpp`, `jpeg_to_bmp_converter_stub.cpp`, `sim_spi_bus`, `sim_display`, `sim_storage`). To get the same responsive UI and safe bus usage on the real device, the Crosspoint firmware can adopt the same patterns: periodic yields in the device’s thumbnail/image path and a single serialization point for SPI (display and SD) in the device HAL or drivers.
 
 ---
 
@@ -517,6 +522,18 @@ This section documents the major features and improvements added to the Crosspoi
 **Cache Location**: `/.crosspoint/epub_<hash>/thumb_<height>.bmp`
 
 **Prewarm**: Thumbnails are generated on the main thread, one EPUB per loop iteration (`prewarmStep()`), with yield points every 8 rows in image conversion so the UI stays responsive and behavior matches the device.
+
+### Image Decoding (Covers & In-Book Images)
+
+**Previous**: All image decoders were stubbed to return `false` — book covers and inline EPUB images never rendered in the emulator.
+
+**Current**: Full image decoding via **stb_image**:
+
+- **`JpegToBmpConverter`**: Decodes JPEG cover images, area-average downscales to target dimensions, Atkinson-dithers to 1-bit or 2-bit grayscale BMP (matches the device's e-ink output format). Used for thumbnail generation on the home screen and library grid.
+- **`JpegToFramebufferConverter` / `PngToFramebufferConverter`**: Decodes in-book JPEG and PNG images, writes the 2bpp pixel cache that `ImageBlock::renderFromCache` expects (`uint16 w`, `uint16 h`, then 2bpp rows, 4px/byte, MSB first), and renders the current pass directly to the framebuffer via `DirectPixelWriter`.
+- **`image_to_bmp.cpp`**: JPEG support enabled in stb_image (previously disabled with `STBI_NO_JPEG`).
+
+**File I/O fix**: `FsFile::openFullPath` previously created a 0-byte file when a read-only open hit a missing path (`fopen "wb"`). On the real device, a read-only open of a missing file simply fails. The spurious empty file poisoned existence checks — for example, the home screen probing a not-yet-generated cover thumbnail would create an empty `thumb_*.bmp`, causing `generateThumbBmp` to skip generation forever. Read-only opens of missing files now correctly return failure.
 
 ### Performance Optimizations
 
@@ -812,9 +829,11 @@ cmake .. -DCROSSPOINT_ROOT=/absolute/path/to/Crosspoint
 - Ensure files are readable: `file sdcard/book.epub`
 
 **Thumbnails not generating**:
+- Thumbnail prewarm is opt-in: set `CROSSPOINT_EMU_PREWARM_THUMBS=1` environment variable before running
 - Check cache directory: `ls -la .crosspoint/`
 - Verify EPUB files are valid: try opening in another reader
-- Check terminal for [SIM] prewarm messages
+- Check terminal for `[SIM]` prewarm messages and `[JPG]`/`[IMG]` decoder messages
+- If stale 0-byte `.bmp` files exist in the cache (from an older emulator version), delete the `.crosspoint/` directory and restart — the emulator will regenerate thumbnails
 
 ### Performance Issues
 
@@ -853,10 +872,24 @@ cmake .. -DCROSSPOINT_ROOT=/absolute/path/to/Crosspoint
 - Button state tracking
 - Press/release detection
 
+**`sim/src/image_decoder_stubs.cpp`**:
+- In-book JPEG/PNG decoding (JpegToFramebufferConverter, PngToFramebufferConverter)
+- Area-average downscale, Atkinson dither to 2bpp pixel cache
+- Direct framebuffer rendering via DirectPixelWriter
+
+**`sim/src/jpeg_to_bmp_converter_stub.cpp`**:
+- JPEG cover → BMP conversion (JpegToBmpConverter)
+- Area-average downscale, Atkinson dither to 1-bit or 2-bit grayscale BMP
+- Used for thumbnail generation (home screen, library grid)
+
 **`sim/src/sim_storage.cpp`**:
 - Virtual SD card (directory mapping)
-- FsFile implementation
+- FsFile implementation (read-only opens of missing files correctly fail)
 - SDCardManager implementation
+
+**`sim/src/fork_compat_stubs.cpp`**:
+- Stubs for device-only subsystems (HalPowerManager, HalClock, HalTiltSensor, PngToBmpConverter, etc.)
+- Allows the emulator to build against different Crosspoint firmware forks
 
 ### Adding Features
 
@@ -869,9 +902,9 @@ cmake .. -DCROSSPOINT_ROOT=/absolute/path/to/Crosspoint
 
 **Adding HAL functionality**:
 1. Add header to `sim/include/` (match device HAL)
-2. Implement in `sim/src/`
+2. Implement in `sim/src/` (or add to `fork_compat_stubs.cpp` for simple stubs)
 3. Ensure API matches device HAL exactly
-4. Update CMakeLists.txt if adding new source files
+4. Update CMakeLists.txt if adding new source files (lib include paths are auto-discovered)
 
 **Debugging**:
 - Use `Serial.printf()` for logging (goes to terminal)
@@ -944,6 +977,33 @@ When the Crosspoint HAL or `main.cpp` changes, the sim HAL in `sim/include/` and
 ---
 
 ## Changelog
+
+### Image Decoding & Fork Compatibility (Jun 2026)
+
+**Image Decoding**
+- Implemented JPEG and PNG decoding in the emulator via stb_image — book covers, thumbnails, and inline EPUB images now render (previously all decoders were stubs returning false).
+- `JpegToBmpConverter`: decodes JPEG covers with area-average downscale and Atkinson dithering to 1-bit or 2-bit grayscale BMP, matching the device's e-ink output format.
+- `JpegToFramebufferConverter` / `PngToFramebufferConverter`: decodes in-book images, writes the 2bpp pixel cache for `ImageBlock::renderFromCache`, and renders directly to the framebuffer via `DirectPixelWriter`.
+- Enabled JPEG support in stb_image (`image_to_bmp.cpp` — removed `STBI_NO_JPEG`).
+
+**File I/O Bug Fix**
+- Fixed `FsFile::openFullPath` creating a 0-byte file on read-only opens of missing paths. This caused the home screen to create empty `thumb_*.bmp` files that permanently blocked thumbnail generation. Read-only opens of missing files now correctly fail.
+
+**Fork Compatibility**
+- Added `HalFile` wrapper class in `HalStorage.h` matching the firmware's file interface (read, write, seek, rename, directory iteration).
+- Added `HalStorage` methods: `openFileForRead`, `openFileForWrite`, `readFile`, `writeFile`, `readFileToStream`, `rename`, `ensureDirectoryExists`.
+- Created stubs for device-only subsystems: `HalPowerManager`, `HalClock`, `HalTiltSensor`, `PngToBmpConverter`, `ObfuscationUtils`.
+- Added HAL stubs: `I18nKeys.h` (Language enum), `InputManager.h`, `Wire.h` (I2C), `ArduinoJson.h`, `NetworkUdp.h`, `esp_partition.h`, `esp_ota_ops.h`, `esp_rom_crc.h`, `esp_system.h`, `esp_crt_bundle.h`, `spi_flash_mmap.h`, `mbedtls/sha256.h`.
+- Added `FsHelpers.h` shim with `std::string` overloads for file extension checks.
+- Updated `HttpDownloader` stub methods to include optional credentials parameters.
+- Fixed `OtaUpdater.installUpdate()` signature to match firmware.
+- Added `HWCDC` typedef alias for Serial in Arduino stubs.
+
+**Build System**
+- CMakeLists.txt auto-discovers all `lib/` subdirectories for include paths (no longer needs manual enumeration).
+- Upgraded to C++20 for firmware fork compatibility.
+- Added `crosspoint_web_server_stub.cpp` and `fork_compat_stubs.cpp` to the build.
+- Added glob patterns for I18n, Dict, MiniBidi, and OpdsParser libraries.
 
 ### UX Overhaul (Feb 2026)
 

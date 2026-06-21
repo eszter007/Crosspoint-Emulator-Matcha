@@ -104,6 +104,17 @@ class String : public Print {
     s_ = s_.substr(start, end == std::string::npos ? std::string::npos : end - start + 1);
   }
 
+  void replace(const char* from, const char* to) {
+    if (!from || !*from) return;
+    const std::string repl = to ? to : "";
+    const std::string needle = from;
+    size_t pos = 0;
+    while ((pos = s_.find(needle, pos)) != std::string::npos) {
+      s_.replace(pos, needle.length(), repl);
+      pos += repl.length();
+    }
+  }
+
   std::string& str() { return s_; }
   const std::string& str() const { return s_; }
 

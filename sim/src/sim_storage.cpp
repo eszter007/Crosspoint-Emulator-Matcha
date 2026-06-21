@@ -68,13 +68,17 @@ bool FsFile::openFullPath(const char* fullPath, oflag_t oflag) {
   if (!fullPath) return false;
   struct stat st;
   if (stat(fullPath, &st) != 0) {
-    if ((oflag & O_CREAT) && (oflag & (O_WRONLY | O_RDWR))) {
-      std::string p(fullPath);
-      for (size_t i = 1; i < p.size(); i++) {
-        if (p[i] == '/') {
-          std::string part = p.substr(0, i);
-          if (mkdir(part.c_str(), 0755) != 0 && errno != EEXIST) return false;
-        }
+    // File doesn't exist. A read-only open must FAIL — never create the file.
+    // (fopen "wb" would create a 0-byte file, which on device a read-open never
+    // does; that spurious empty file then poisons existence checks downstream.)
+    if (!(oflag & O_CREAT) || !(oflag & (O_WRONLY | O_RDWR))) {
+      return false;
+    }
+    std::string p(fullPath);
+    for (size_t i = 1; i < p.size(); i++) {
+      if (p[i] == '/') {
+        std::string part = p.substr(0, i);
+        if (mkdir(part.c_str(), 0755) != 0 && errno != EEXIST) return false;
       }
     }
     fp_ = fopen(fullPath, (oflag & O_RDWR) ? "wb+" : "wb");

@@ -10,10 +10,10 @@ class HalDisplay {
   enum RefreshMode {
     FULL_REFRESH,
     HALF_REFRESH,
-    FAST_REFRESH
+    FAST_REFRESH,
   };
 
-  void begin();
+  void begin(bool seamless = false);
 
   static constexpr uint16_t DISPLAY_WIDTH = EInkDisplay::DISPLAY_WIDTH;
   static constexpr uint16_t DISPLAY_HEIGHT = EInkDisplay::DISPLAY_HEIGHT;
@@ -23,8 +23,10 @@ class HalDisplay {
   void clearScreen(uint8_t color = 0xFF) const;
   void drawImage(const uint8_t* imageData, uint16_t x, uint16_t y, uint16_t w, uint16_t h,
                  bool fromProgmem = false) const;
+  void drawImageTransparent(const uint8_t* imageData, uint16_t x, uint16_t y, uint16_t w, uint16_t h,
+                            bool fromProgmem = false) const;
 
-  void displayBuffer(RefreshMode mode = FAST_REFRESH, bool fadingFix = false);
+  void displayBuffer(RefreshMode mode = FAST_REFRESH, bool turnOffScreen = false);
   void refreshDisplay(RefreshMode mode = FAST_REFRESH, bool turnOffScreen = false);
   void deepSleep();
 
@@ -34,8 +36,18 @@ class HalDisplay {
   void copyGrayscaleLsbBuffers(const uint8_t* lsbBuffer);
   void copyGrayscaleMsbBuffers(const uint8_t* msbBuffer);
   void cleanupGrayscaleBuffers(const uint8_t* bwBuffer);
-  void displayGrayBuffer(bool fadingFix = false);
+  void displayGrayBuffer(bool turnOffScreen = false);
+
+  void writeGrayscalePlaneStrip(bool lsbPlane, const uint8_t* rows, uint16_t yStart, uint16_t numRows);
+  bool supportsStripGrayscale() const;
+
+  uint16_t getDisplayWidth() const;
+  uint16_t getDisplayHeight() const;
+  uint16_t getDisplayWidthBytes() const;
+  uint32_t getBufferSize() const;
 
  private:
   EInkDisplay einkDisplay;
 };
+
+extern HalDisplay display;

@@ -9,7 +9,6 @@
  */
 
 #define STB_IMAGE_IMPLEMENTATION
-#define STBI_NO_JPEG          // JPEG is handled by picojpeg
 #define STBI_NO_HDR           // No HDR support needed
 #define STBI_NO_LINEAR        // No linear light needed
 

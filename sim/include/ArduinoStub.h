@@ -12,6 +12,7 @@
 #include <cstring>
 #include <chrono>
 #include <thread>
+#include <string>
 
 // Minimal Arduino-like API for host build
 
@@ -21,6 +22,14 @@ inline unsigned long millis() {
   return static_cast<unsigned long>(
       std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count());
 }
+
+inline unsigned long micros() {
+  static const auto start = std::chrono::steady_clock::now();
+  auto now = std::chrono::steady_clock::now();
+  return static_cast<unsigned long>(
+      std::chrono::duration_cast<std::chrono::microseconds>(now - start).count());
+}
+
 
 // Cap delay to 1ms in the emulator to keep the UI responsive.
 // On the real device delay(10) saves power; in the sim it just adds latency.
@@ -66,6 +75,7 @@ class Stream : public Print {
  public:
   virtual int available() { return 0; }
   virtual int read() { return -1; }
+  std::string readStringUntil(char) { return ""; }
   virtual int peek() { return -1; }
   size_t write(uint8_t c) override { return 0; }
 };
@@ -76,6 +86,7 @@ class SerialStub : public Print {
   operator bool() const { return true; }
   int available() const { return 0; }
   int read() { return -1; }
+  std::string readStringUntil(char) { return ""; }
   size_t write(uint8_t c) override {
     putchar(static_cast<char>(c));
     return 1;
@@ -97,5 +108,12 @@ class SerialStub : public Print {
 
 extern SerialStub Serial;
 
+// HWCDC is an alias for the Serial port (used in Logging.h)
+using HWCDC = SerialStub;
+
 #include "ESP.h"
 #include "SPI.h"
+
+#ifndef RTC_NOINIT_ATTR
+#define RTC_NOINIT_ATTR
+#endif

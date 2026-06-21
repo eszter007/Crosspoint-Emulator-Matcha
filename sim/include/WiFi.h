@@ -47,6 +47,7 @@ class WiFiClass {
   void mode(int) {}
   wl_status_t status() const { return WL_DISCONNECTED; }
   void disconnect(bool = true) {}
+  void disconnect(bool, bool) {}
   void softAPdisconnect(bool = true) {}
   bool softAP(const char* ssid, const char* pass = nullptr, int = 1, bool = false, int = 4) {
     (void)ssid;
@@ -62,11 +63,14 @@ class WiFiClass {
   }
   wifi_mode_t getMode() const { return WIFI_MODE_NULL; }
   String getHostname() const { return String(""); }
+  void persistent(bool) {}
+  void setHostname(const char*) {}
   void setSleep(bool) {}
   int softAPgetStationNum() const { return 0; }
   void macAddress(uint8_t* mac) {
     for (int i = 0; i < 6; i++) mac[i] = 0;
   }
+  String macAddress() const { return String("00:00:00:00:00:00"); }
   void scanDelete() {}
   int16_t scanNetworks(bool = false) { return 0; }
   int16_t scanComplete() { return 0; }

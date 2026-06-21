@@ -1,20 +1,16 @@
 cmake_minimum_required(VERSION 3.16)
 project(crosspoint-emulator CXX C)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
-# Crosspoint repo path (sibling by default)
 if(NOT DEFINED CROSSPOINT_ROOT)
   set(CROSSPOINT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../Crosspoint")
 endif()
 
-# Optional: point to a local SDL2 install (e.g. from Downloads or built from source)
-# Usage: cmake -DSDL2_ROOT=/path/to/SDL2-2.30.2 ..
 if(DEFINED SDL2_ROOT)
   set(CMAKE_PREFIX_PATH "${SDL2_ROOT};${CMAKE_PREFIX_PATH}")
 endif()
 
-# Find SDL2: try config first, then pkg-config
 set(SDL2_USE_PKGCONFIG OFF)
 find_package(SDL2 QUIET)
 if(NOT SDL2_FOUND)
@@ -27,13 +23,9 @@ if(NOT SDL2_FOUND)
   endif()
 endif()
 if(NOT SDL2_FOUND)
-  message(FATAL_ERROR "SDL2 not found. Need SDL2 (not SDL3). Options:\n"
-    "  - Install: brew install sdl2\n"
-    "  - Or download SDL2 from https://github.com/libsdl-org/SDL/releases (choose a 2.x release),\n"
-    "    extract it, build and install, then: cmake -DSDL2_ROOT=/path/to/SDL2-build ..")
+  message(FATAL_ERROR "SDL2 not found. Need SDL2 (not SDL3).")
 endif()
 
-# Pre-build: generate HTML headers if Crosspoint src exists
 if(EXISTS "${CROSSPOINT_ROOT}/scripts/build_html.py")
   execute_process(
     COMMAND "${CMAKE_COMMAND}" -E env "PYTHONPATH=" python3 "${CROSSPOINT_ROOT}/scripts/build_html.py"
@@ -42,7 +34,6 @@ if(EXISTS "${CROSSPOINT_ROOT}/scripts/build_html.py")
   )
 endif()
 
-# Sim HAL and stubs (include stub impls for OTA/HTTP so we don't compile real network code)
 set(SIM_SOURCES
   sim/src/main_sim.cpp
   sim/src/sim_display.cpp
@@ -58,14 +49,18 @@ set(SIM_SOURCES
   sim/src/ota_updater_stub.cpp
   sim/src/http_downloader_stub.cpp
   sim/src/image_to_bmp.cpp
+  sim/src/crosspoint_web_server_stub.cpp
+  sim/src/image_decoder_stubs.cpp
+  sim/src/jpeg_to_bmp_converter_stub.cpp
+  sim/src/fork_compat_stubs.cpp
 )
 
-# Crosspoint application sources (all src/*.cpp); exclude network impls we stub in sim
 file(GLOB_RECURSE CROSSPOINT_SRC "${CROSSPOINT_ROOT}/src/*.cpp")
 list(FILTER CROSSPOINT_SRC EXCLUDE REGEX ".*/network/OtaUpdater\\.cpp$")
 list(FILTER CROSSPOINT_SRC EXCLUDE REGEX ".*/network/HttpDownloader\\.cpp$")
+list(FILTER CROSSPOINT_SRC EXCLUDE REGEX ".*/network/CrossPointWebServer\\.cpp$")
+list(FILTER CROSSPOINT_SRC EXCLUDE REGEX ".*/network/WebDAVHandler\\.cpp$")
 
-# Crosspoint libs (exclude hal - we use sim HAL)
 file(GLOB CROSSPOINT_LIB_CPP
   "${CROSSPOINT_ROOT}/lib/GfxRenderer/*.cpp"
   "${CROSSPOINT_ROOT}/lib/Epub/*.cpp"
@@ -79,18 +74,24 @@ file(GLOB CROSSPOINT_LIB_CPP
   "${CROSSPOINT_ROOT}/lib/Utf8/*.cpp"
   "${CROSSPOINT_ROOT}/lib/FsHelpers/*.cpp"
   "${CROSSPOINT_ROOT}/lib/ZipFile/*.cpp"
+  "${CROSSPOINT_ROOT}/lib/InflateReader/*.cpp"
+  "${CROSSPOINT_ROOT}/lib/Logging/*.cpp"
+  "${CROSSPOINT_ROOT}/lib/I18n/*.cpp"
+  "${CROSSPOINT_ROOT}/lib/Dict/*.cpp"
+  "${CROSSPOINT_ROOT}/lib/MiniBidi/*.cpp"
+  "${CROSSPOINT_ROOT}/lib/MiniBidi/*.c"
   "${CROSSPOINT_ROOT}/lib/miniz/*.c"
   "${CROSSPOINT_ROOT}/lib/expat/*.c"
-  "${CROSSPOINT_ROOT}/lib/JpegToBmpConverter/*.cpp"
   "${CROSSPOINT_ROOT}/lib/picojpeg/*.c"
+  "${CROSSPOINT_ROOT}/lib/uzlib/src/*.c"
   "${CROSSPOINT_ROOT}/lib/KOReaderSync/*.cpp"
   "${CROSSPOINT_ROOT}/lib/OpdsParser/*.cpp"
   "${CROSSPOINT_ROOT}/lib/OpdsParser/*/*.cpp"
 )
-# Exclude hal
 list(FILTER CROSSPOINT_LIB_CPP EXCLUDE REGEX ".*/hal/.*")
+list(FILTER CROSSPOINT_LIB_CPP EXCLUDE REGEX ".*/JpegToFramebufferConverter\\.cpp$")
+list(FILTER CROSSPOINT_LIB_CPP EXCLUDE REGEX ".*/PngToFramebufferConverter\\.cpp$")
 
-# ArduinoJson from PlatformIO libs (if present)
 set(ARDUINO_JSON_ROOT "${CROSSPOINT_ROOT}/.pio/libdeps/default/ArduinoJson")
 if(EXISTS "${ARDUINO_JSON_ROOT}/src/ArduinoJson.h")
   file(GLOB ARDUINO_JSON_SOURCES "${ARDUINO_JSON_ROOT}/src/*.cpp")
@@ -103,28 +104,19 @@ add_executable(crosspoint_emulator
   ${CROSSPOINT_LIB_CPP}
 )
 
+file(GLOB LIB_DIRS "${CROSSPOINT_ROOT}/lib/*/")
+set(LIB_INCLUDES "${CROSSPOINT_ROOT}/src" "${CROSSPOINT_ROOT}/lib")
+foreach(LIB_DIR ${LIB_DIRS})
+  list(APPEND LIB_INCLUDES "${LIB_DIR}")
+endforeach()
+
 target_include_directories(crosspoint_emulator PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/sim/include
-  ${CROSSPOINT_ROOT}/src
-  ${CROSSPOINT_ROOT}/lib
-  ${CROSSPOINT_ROOT}/lib/GfxRenderer
-  ${CROSSPOINT_ROOT}/lib/Epub
-  ${CROSSPOINT_ROOT}/lib/Txt
-  ${CROSSPOINT_ROOT}/lib/Xtc
-  ${CROSSPOINT_ROOT}/lib/EpdFont
-  ${CROSSPOINT_ROOT}/lib/Utf8
-  ${CROSSPOINT_ROOT}/lib/FsHelpers
-  ${CROSSPOINT_ROOT}/lib/ZipFile
-  ${CROSSPOINT_ROOT}/lib/Serialization
-  ${CROSSPOINT_ROOT}/lib/JpegToBmpConverter
-  ${CROSSPOINT_ROOT}/lib/KOReaderSync
-  ${CROSSPOINT_ROOT}/lib/OpdsParser
-  ${CROSSPOINT_ROOT}/lib/miniz
-  ${CROSSPOINT_ROOT}/lib/expat
-  ${CROSSPOINT_ROOT}/lib/picojpeg
+  ${LIB_INCLUDES}
   ${CROSSPOINT_ROOT}/lib/Epub/Epub
   ${CROSSPOINT_ROOT}/lib/Epub/Epub/parsers
   ${CROSSPOINT_ROOT}/lib/Epub/Epub/hyphenation
+  ${CROSSPOINT_ROOT}/lib/uzlib/src
 )
 
 if(EXISTS "${ARDUINO_JSON_ROOT}/src")
@@ -151,5 +143,5 @@ target_compile_definitions(crosspoint_emulator PRIVATE
   USE_UTF8_LONG_NAMES=1
 )
 
-# main_sim.cpp provides main() and calls setup()/loop() from Crosspoint main.cpp
-# So we must not link a second main - Crosspoint main.cpp does not define main on host
+
+target_compile_options(crosspoint_emulator PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-include;cassert>)

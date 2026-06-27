@@ -2,14 +2,14 @@
 
 A fork of [jonmooreai/Crosspoint-Emulator](https://github.com/jonmooreai/Crosspoint-Emulator).
 
-The emulator runs the [Crosspoint](https://github.com/crosspoint-reader/crosspoint-reader) e-reader firmware on your Mac or PC using an SDL2 window, directory-backed SD card, and keyboard input. This fork targets the https://github.com/eszter007/Crosspoint-Emulator.git, a Japanese-enabled Crosspoint firmware fork rather than mainline Crosspoint.
+The emulator runs the [Crosspoint](https://github.com/crosspoint-reader/crosspoint-reader) e-reader firmware on your Mac or PC using an SDL2 window, directory-backed SD card, and keyboard input. This fork targets the https://github.com/eszter007/crosspoint-reader-JP, a Japanese-enabled Crosspoint firmware fork rather than mainline Crosspoint.
 
 ---
 
 ## What this fork adds
 
 The upstream emulator ([jonmooreai/Crosspoint-Emulator](https://github.com/jonmooreai/Crosspoint-Emulator)) already provides a complete desktop emulator with a library grid, thumbnail prewarm, UX polish (button press feedback, centralized constants), and detailed build documentation. This fork does not change any of that. It improves support for rendering the Japanese language learning fork:
-https://github.com/eszter007/Crosspoint-Emulator.git
+https://github.com/eszter007/crosspoint-reader-JP
 
 ---
 

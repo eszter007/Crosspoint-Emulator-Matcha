@@ -1,79 +1,101 @@
-# Crosspoint Emulator — Japanese Reading Companion
+# Crosspoint Emulator — Japanese Reading Fork
 
-A desktop emulator for the [Crosspoint](https://github.com/crosspoint-reader/crosspoint-reader) e-reader firmware (Xteink X4), built for **Japanese language learners**. Read Japanese EPUBs with built-in dictionary lookup, verb deinflection, grammar references, and page translation — all running natively on your Mac or PC without the physical device.
+A fork of [jonmooreai/Crosspoint-Emulator](https://github.com/jonmooreai/Crosspoint-Emulator) adding Japanese language reading support — vertical text layout, dictionary lookup, verb deinflection, and page translation — on top of the upstream emulator's existing UX and library improvements.
 
-This is a fork of the Crosspoint firmware with extensive Japanese language support added on top of the base e-reader functionality.
-
----
-
-## Features
-
-### Japanese Reading Support
-
-- **Vertical text (tategaki)** — Full vertical Japanese layout with proper punctuation positioning (brackets, dashes, ellipsis), small kana placement, and font-adaptive spacing. Works with UDDigiKyokasho, Noto Serif, and Noto Sans.
-- **Furigana (ruby text)** — Reading aids rendered above (horizontal) or beside (vertical) kanji, with anti-overlap logic so dense furigana doesn't collide.
-- **Bold, italic, and emphasis marks** — Sesame dots (﹅) and other text formatting preserved in both reading modes.
-
-### Dictionary & Word Lookup
-
-- **Built-in JMdict dictionary** — Look up any word on the current page. Available in both vertical and horizontal reading modes via the reader menu.
-- **Multiple readings** — Kanji with multiple dictionary entries (e.g. 家 → いえ, うち, や) show all readings sorted by frequency.
-- **Verb deinflection** — Conjugated forms resolve to their dictionary base: 読まれた→読む, 食べさせられて→食べる, 出された→出す. Covers passive, causative, te-form, masu-stem, and compound auxiliaries.
-- **Grammar dictionary** — Integrated grammar reference (from "Dictionary of Japanese Grammar") surfaces grammar patterns alongside vocabulary definitions.
-- **Name dictionary (JMnedict)** — Japanese names are recognized and grouped with honorifics (根岸さん, 和樹くん shown as one unit, not split).
-- **Smart word boundaries** — Pre-scans the page to find dictionary-matchable positions. Skips particles, digits, and punctuation. Handles compound words (間取り図) and bound suffixes (設計士).
-- **Scrollable definitions** — Long entries scroll with Left/Right buttons. Entry navigation with Up/Down.
-
-### Page Translation
-
-- **Gemini AI translation** — Translate the current page from Japanese to English via Google's Gemini 2.5 Flash API. Shows a scrollable English translation overlay.
-- **Works in the emulator** — Desktop version uses libcurl (no WiFi needed). Device version uses ESP32 WiFi + HTTP client.
-
-### Image Handling
-
-- **Dedicated image pages** — Images in vertical mode render on their own page at full size.
-- **Aspect-aware rotation** — Landscape images on a portrait screen (or vice versa) auto-rotate so the reader tilts the device naturally.
-- **Status bar respected** — Rotated images inset correctly so they don't overlap the status bar.
-- **No blank pages** — Consecutive images no longer produce empty pages between them.
-
-### E-Reader Features (from Crosspoint base)
-
-- EPUB, TXT, and XTC format support
-- Library grid with cover thumbnails and reading progress
-- Multiple font families and sizes
-- Bookmarks and progress tracking
-- Theme support (Classic, Lyra)
-- Multiple display orientations
+The emulator runs the [Crosspoint](https://github.com/crosspoint-reader/crosspoint-reader) e-reader firmware on your Mac or PC using an SDL2 window, directory-backed SD card, and keyboard input. This fork targets the `claude/vertical-japanese-text-pyosmu` branch of a Japanese-enabled Crosspoint firmware fork rather than mainline Crosspoint.
 
 ---
 
-## Quick Start
+## What this fork adds
+
+The upstream emulator ([jonmooreai/Crosspoint-Emulator](https://github.com/jonmooreai/Crosspoint-Emulator)) already provides a complete desktop emulator with a library grid, thumbnail prewarm, UX polish (button press feedback, centralized constants), and detailed build documentation. This fork does not change any of that. What it adds:
+
+### Vertical Japanese text (tategaki)
+
+Full vertical layout engine for Japanese EPUBs, implemented as new files only (`Kinsoku.h/.cpp`, `VerticalParsedText.h/.cpp`, `VerticalTextBlock.h/.cpp`) with no modifications to existing Crosspoint code:
+
+- Column-fill layout with kinsoku shori (oikomi/oidashi) — line-edge punctuation constraints
+- Correct placement of brackets, dashes, ellipsis, and small kana in vertical runs
+- Embedded horizontal runs (English words, numbers) handled with correct internal spacing
+- Font-adaptive spacing for UDDigiKyokasho, Noto Serif JP, and Noto Sans JP
+- Images render on their own page at full size; landscape images auto-rotate
+
+### Furigana (ruby text)
+
+Reading aids rendered beside kanji in vertical mode and above kanji in horizontal mode, with anti-overlap logic for dense furigana.
+
+### Dictionary lookup
+
+Button-driven word lookup requiring no touchscreen:
+
+- Pre-scans the current page to find dictionary-matchable word positions
+- Character-granular cursor stepping in reading order (modeled on the existing footnote-anchor navigation pattern)
+- Longest-match word detection on Confirm
+- Skips particles, digits, and punctuation automatically
+- Handles compound words (間取り図) and bound suffixes (設計士)
+- Scrollable definitions: Left/Right scrolls within an entry, Up/Down moves between entries
+- Backed by a binary-searchable fixed-record JMdict index on the SD card — no RAM load
+
+### Verb deinflection
+
+Local deinflection engine (rules implemented independently, not vendored from Yomitan) that recovers base forms from conjugated Japanese before dictionary lookup:
+
+- Covers passive, causative, te-form, masu-stem, and compound auxiliaries
+- Example: 読まれた→読む, 食べさせられて→食べる, 出された→出す
+
+### Name dictionary
+
+JMnedict support: Japanese names are recognised and grouped with honorifics (根岸さん, 和樹くん shown as one unit, not split across a word boundary).
+
+### Grammar dictionary
+
+Integrated grammar reference (Dictionary of Japanese Grammar format) surfaced alongside vocabulary definitions.
+
+### Page translation
+
+Translate the current page from Japanese to English via the Gemini 2.5 Flash API:
+
+- Scrollable translation overlay (Up/Down to scroll, Back to dismiss)
+- Desktop build uses libcurl; device build uses ESP32 WiFi + HTTP client
+- Requires a Gemini API key in `sdcard/gemini.key`
+
+---
+
+## What this fork does not change
+
+Everything in the upstream emulator is preserved unchanged: the UX constants system, library grid, thumbnail prewarm, framebuffer rendering optimisations, button press feedback, the HAL abstraction layer, build system, and all documentation for general emulator use. Refer to [jonmooreai/Crosspoint-Emulator](https://github.com/jonmooreai/Crosspoint-Emulator) for that material.
+
+---
+
+## Quick start
 
 ### Requirements
 
-- **macOS** or **Linux** (Windows: see [Windows Setup](#setup-on-windows) below)
-- C++17 compiler, CMake 3.16+, SDL2, Python 3, Git
-- libcurl (included on macOS; `libcurl4-openssl-dev` on Linux)
+- macOS or Linux (Windows: see upstream README)
+- C++17 compiler, CMake 3.16+, SDL2 2.x, Python 3, Git
+- libcurl (pre-installed on macOS; `libcurl4-openssl-dev` on Linux)
 
 ### 1. Clone
 
-```bash
+```sh
 git clone https://github.com/eszter007/Crosspoint-Emulator.git
 cd Crosspoint-Emulator
 git clone https://github.com/eszter007/crosspoint-reader-JP.git crosspoint-reader
 cd crosspoint-reader && git checkout claude/vertical-japanese-text-pyosmu && cd ..
 ```
 
+> **Note:** This fork clones the firmware as `crosspoint-reader/` inside the emulator directory rather than as a sibling `../Crosspoint`. The `CMakeLists.txt` has been updated accordingly.
+
 ### 2. Install dependencies (macOS)
 
-```bash
-xcode-select --install        # C++ compiler
-brew install cmake sdl2        # Build tools
+```sh
+xcode-select --install
+brew install cmake sdl2
 ```
 
 ### 3. Generate i18n strings
 
-```bash
+```sh
 python3 crosspoint-reader/scripts/gen_i18n.py \
   crosspoint-reader/lib/I18n/translations \
   crosspoint-reader/lib/I18n/
@@ -81,7 +103,7 @@ python3 crosspoint-reader/scripts/gen_i18n.py \
 
 ### 4. Build
 
-```bash
+```sh
 mkdir -p build && cd build
 cmake ..
 cmake --build .
@@ -90,22 +112,20 @@ cd ..
 
 ### 5. Set up the SD card directory
 
-```bash
+```sh
 mkdir -p sdcard
-# Add a Japanese EPUB:
 cp /path/to/japanese-book.epub sdcard/
 ```
 
 ### 6. Set up dictionaries
 
-Convert and install the dictionaries the word lookup feature needs:
+Convert and install the dictionary indexes the word lookup feature needs:
 
-```bash
-# Download Jitendex (Yomitan format) from https://github.com/stephenmk/Jitendex
-# Download JMnedict from https://github.com/JMdictProject
-# Download Grammar dictionary (Yomitan format)
+```sh
+# Download Jitendex (Yomitan format): https://github.com/stephenmk/Jitendex
+# Download JMnedict: https://github.com/JMdictProject
+# Download a grammar dictionary in Yomitan format
 
-# Convert dictionaries:
 python3 tools/dict_convert/convert_jmdict.py \
   --input /path/to/jitendex-yomitan.zip \
   --output-dir sdcard/dict/
@@ -125,130 +145,95 @@ This produces `jmdict.idx`/`.dat`, `jmnedict.idx`/`.dat`, and `grammar.idx`/`.da
 
 ### 7. Set up translation (optional)
 
-To use the "Translate Page" feature:
+```sh
+echo -n "YOUR_GEMINI_KEY_HERE" > sdcard/gemini.key
+```
 
-1. Get a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey)
-2. Create the key file:
-   ```bash
-   echo -n "AIzaSyYOUR_KEY_HERE" > sdcard/gemini.key
-   ```
+Get a key from [Google AI Studio](https://aistudio.google.com/apikey).
 
-### 8. Set up Japanese fonts (optional)
+### 8. Japanese fonts (optional)
 
-For the best vertical text experience, place `.cpfont` font files in `sdcard/.fonts/`. The emulator works with the built-in fonts, but SD card fonts (UDDigiKyokasho, Noto Serif JP) give better results for Japanese text.
-
-See `tools/build-sd-fonts.py` and `tools/sd-fonts.yaml` for font conversion.
+Place `.cpfont` files in `sdcard/.fonts/`. The emulator runs with built-in fonts, but SD card fonts (UDDigiKyokasho, Noto Serif JP) give better vertical text results. See `tools/build-sd-fonts.py` and `tools/sd-fonts.yaml`.
 
 ### 9. Run
 
-```bash
+```sh
 ./build/crosspoint_emulator
 ```
 
-### Keyboard Controls
-
-| Key | Action |
-|-----|--------|
-| Arrow Keys | Navigate / Page turn |
-| Enter | Confirm / Open menu |
-| Backspace / Escape | Back |
-| P | Power |
-
-### Using Word Lookup
-
-1. Open a Japanese book
-2. Press **Enter** to open the reader menu
-3. Select **Word Lookup**
-4. **Up/Down** — navigate between matched words
-5. **Left/Right** — scroll within a long definition
-6. **Back** — return to reading
-
-### Using Translation
-
-1. Open a Japanese book
-2. Press **Enter** → select **Translate Page**
-3. Wait for "Translating..." to complete
-4. **Up/Down** — scroll the translation
-5. **Back** — return to reading
-
 ---
 
-## Setup on macOS (detailed)
+## Using the Japanese features
 
-1. **Xcode Command Line Tools**: `xcode-select --install`
-2. **Homebrew**: `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
-3. **CMake + SDL2**: `brew install cmake sdl2`
-4. **Python 3**: `python3 --version` (pre-installed on macOS; `brew install python3` if missing)
-5. **Clone and build** — follow [Quick Start](#quick-start) above
+### Word lookup
 
-## Setup on Windows
+1. Open a Japanese EPUB
+2. Press **Enter** to open the reader menu
+3. Select **Word Lookup**
+4. **Up/Down** — move between matched words on the page
+5. **Left/Right** — scroll within a long definition entry
+6. **Back** — return to reading
 
-1. Install **Visual Studio Build Tools** with "Desktop development with C++"
-2. Install **CMake** from cmake.org (add to PATH)
-3. Install **SDL2** development package — extract to e.g. `C:\SDL2`
-4. Install **Python 3** from python.org (add to PATH)
-5. Clone repos and build:
-   ```cmd
-   git clone https://github.com/eszter007/Crosspoint-Emulator.git
-   cd Crosspoint-Emulator
-   git clone https://github.com/eszter007/crosspoint-reader-JP.git crosspoint-reader
-   cd crosspoint-reader && git checkout claude/vertical-japanese-text-pyosmu && cd ..
-   python3 crosspoint-reader/scripts/gen_i18n.py crosspoint-reader/lib/I18n/translations crosspoint-reader/lib/I18n/
-   mkdir build && cd build
-   cmake .. -DSDL2_ROOT=C:\SDL2
-   cmake --build . --config Release
-   ```
+### Page translation
+
+1. Open a Japanese EPUB
+2. Press **Enter** → select **Translate Page**
+3. Wait for the translation to complete
+4. **Up/Down** — scroll the translation overlay
+5. **Back** — return to reading
 
 ---
 
 ## Architecture
 
-The emulator runs the **same firmware code** as the Xteink X4 device, replacing hardware-specific components with desktop equivalents:
+The emulator runs the firmware source unchanged, replacing hardware components with desktop equivalents:
 
-| Component | Device | Emulator |
-|-----------|--------|----------|
-| Display | 800x480 E-Ink | SDL2 window |
-| Storage | SD card | `./sdcard/` directory |
-| Input | Physical buttons | Keyboard |
-| Images | On-device JPEG/PNG decode | stb_image |
-| Network | ESP32 WiFi + HTTP | libcurl (translation only) |
-| Dictionary | SD card binary index | Same (via simulated SD) |
+| Component  | Device                    | Emulator                        |
+|------------|---------------------------|---------------------------------|
+| Display    | 800×480 e-ink             | SDL2 window                     |
+| Storage    | SD card                   | `./sdcard/` directory           |
+| Input      | Physical buttons          | Keyboard                        |
+| Images     | On-device JPEG/PNG decode | stb_image                       |
+| Network    | ESP32 WiFi + HTTP         | libcurl (translation only)      |
+| Dictionary | SD card binary index      | Same (via simulated SD)         |
 
 ### Key directories
 
 ```
 Crosspoint-Emulator/
-  CMakeLists.txt          # Build configuration
-  sim/src/                # Emulator HAL (display, storage, input, stubs)
-  sim/include/            # Emulator HAL headers
-  sdcard/                 # Simulated SD card root
-    dict/                 # Dictionary files (jmdict, jmnedict, grammar)
-    gemini.key            # Gemini API key (optional)
-    .crosspoint/          # Cached EPUB layouts (auto-generated)
-  crosspoint-reader/      # Firmware source (submodule or clone)
-    lib/Dict/             # Dictionary lookup, deinflection
-    lib/Epub/             # EPUB parsing, vertical text layout
-    lib/GfxRenderer/      # Rendering engine
-    src/activities/reader/ # Reader UI (word lookup, translation, menu)
+  CMakeLists.txt                   # Build configuration (modified from upstream)
+  sim/src/                         # Emulator HAL — unchanged from upstream
+  sim/include/                     # Emulator HAL headers — unchanged from upstream
+  sdcard/                          # Simulated SD card root
+    dict/                          # Dictionary indexes (jmdict, jmnedict, grammar)
+    gemini.key                     # Gemini API key (optional)
+    .crosspoint/                   # Cached EPUB layouts (auto-generated)
+  crosspoint-reader/               # Japanese firmware fork (cloned here, not as sibling)
+    lib/Dict/                      # Dictionary lookup, deinflection engine
+    lib/Epub/                      # EPUB parsing + vertical text layout engine
+    lib/GfxRenderer/               # Rendering engine
+    src/activities/reader/         # Reader UI (word lookup, translation, menu)
 ```
 
 ---
 
 ## Troubleshooting
 
-**Build fails with missing headers**: Run `python3 crosspoint-reader/scripts/gen_i18n.py ...` first (generates I18n headers). If `ArduinoJson.h` errors appear, those activities are excluded from the emulator build — do a clean rebuild: `rm -rf build && mkdir build && cd build && cmake .. && cmake --build .`
+**Build fails with missing i18n headers** — Run the `gen_i18n.py` step before building (step 3 above). If `ArduinoJson.h` errors appear, those activities are excluded from the emulator build; do a clean rebuild: `rm -rf build && mkdir build && cd build && cmake .. && cmake --build .`
 
-**No books appear**: Ensure `.epub` files are directly in `sdcard/` (not nested). Check: `ls sdcard/*.epub`
+**No books appear** — Check that `.epub` files are directly in `sdcard/`, not nested in a subdirectory. Verify with `ls sdcard/*.epub`.
 
-**Word Lookup not in menu**: Dictionary files must be in `sdcard/dict/`. Check: `ls sdcard/dict/jmdict.idx`
+**Word Lookup not in menu** — Dictionary index files must exist in `sdcard/dict/`. Check with `ls sdcard/dict/jmdict.idx`.
 
-**Translation shows "No API key"**: Create `sdcard/gemini.key` with your Gemini API key (raw key string, no quotes).
+**Translation shows "No API key"** — Create `sdcard/gemini.key` containing your Gemini key as a raw string with no quotes or newline.
 
-**Translation shows HTTP 429**: Rate limit on Google's free tier. Wait a minute and retry.
+**Translation returns HTTP 429** — Rate limit on Google's free tier. Wait a minute and retry.
 
-**Vertical text cache stale after code changes**: Delete `sdcard/.crosspoint/` and restart the emulator.
+**Vertical text layout looks stale after a code change** — Delete `sdcard/.crosspoint/` and restart.
 
-**SDL2 not found**: `brew install sdl2` (macOS) or `apt install libsdl2-dev` (Linux).
+**SDL2 not found** — `brew install sdl2` (macOS) or `apt install libsdl2-dev` (Linux).
+
+For general build and emulator issues not specific to the Japanese features, see the [upstream README](https://github.com/jonmooreai/Crosspoint-Emulator).
 
 ---
 
@@ -256,7 +241,7 @@ Crosspoint-Emulator/
 
 1. Fork and clone
 2. Create a feature branch
-3. Test the emulator builds and runs
-4. Open a pull request with a description of changes
+3. Test that the emulator builds and runs
+4. Open a pull request describing the change
 
-Built on top of the [Crosspoint](https://github.com/crosspoint-reader/crosspoint-reader) e-reader firmware project.
+Built on top of [jonmooreai/Crosspoint-Emulator](https://github.com/jonmooreai/Crosspoint-Emulator), which is in turn built on the [Crosspoint](https://github.com/crosspoint-reader/crosspoint-reader) e-reader firmware.

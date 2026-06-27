@@ -10,6 +10,9 @@
 #include "activities/network/CalibreConnectActivity.h"
 
 #include <KOReaderJsonIO.h>
+#include <I18n.h>
+#include "components/UITheme.h"
+#include "fontIds.h"
 
 namespace KOReaderJsonIO {
 bool save(const KOReaderCredentialStore&, const char*) { return true; }
@@ -56,12 +59,7 @@ void WifiSelectionActivity::onExit() { Activity::onExit(); }
 void WifiSelectionActivity::loop() {}
 void WifiSelectionActivity::render(RenderLock&&) {}
 
-EpubReaderTranslationActivity::EpubReaderTranslationActivity(GfxRenderer& r, MappedInputManager& m, std::string)
-    : Activity("EpubReaderTranslation", r, m) {}
-void EpubReaderTranslationActivity::onEnter() { Activity::onEnter(); }
-void EpubReaderTranslationActivity::onExit() { Activity::onExit(); }
-void EpubReaderTranslationActivity::loop() {}
-void EpubReaderTranslationActivity::render(RenderLock&&) {}
+// EpubReaderTranslationActivity is implemented natively in translation_activity_sim.cpp
 
 
 void CalibreConnectActivity::loop() {}

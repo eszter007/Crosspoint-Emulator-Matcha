@@ -55,6 +55,7 @@ set(SIM_SOURCES
   sim/src/fork_compat_stubs.cpp
   sim/src/json_settings_stub.cpp
   sim/src/excluded_activity_stubs.cpp
+  sim/src/translation_activity_sim.cpp
 )
 
 file(GLOB_RECURSE CROSSPOINT_SRC "${CROSSPOINT_ROOT}/src/*.cpp")
@@ -145,6 +146,10 @@ if(SDL2_USE_PKGCONFIG)
 else()
   target_link_libraries(crosspoint_emulator PRIVATE SDL2::SDL2)
 endif()
+
+# libcurl — used by the emulator's native translation activity (desktop HTTPS)
+find_package(CURL REQUIRED)
+target_link_libraries(crosspoint_emulator PRIVATE CURL::libcurl)
 
 target_compile_definitions(crosspoint_emulator PRIVATE
   CROSSPOINT_EMULATED=1

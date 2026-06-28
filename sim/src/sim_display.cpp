@@ -157,7 +157,9 @@ void EInkDisplay::drawImage(const uint8_t* imageData, uint16_t x, uint16_t y, ui
       for (int b = 0; b < 8 && col + b < w; b++) {
         const uint16_t dstX = x + col + b;
         if (dstX >= EInkDisplay::DISPLAY_WIDTH) break;
-        if (byte & (0x80 >> b)) {
+        // Icon format: 1 = white (transparent), 0 = black (foreground).
+        // Only draw black pixels; leave white pixels as-is (transparent).
+        if (!(byte & (0x80 >> b))) {
           const size_t idx = dstY * EInkDisplay::DISPLAY_WIDTH_BYTES + dstX / 8;
           frameBuffer[idx] &= ~(0x80 >> (dstX & 7));
         }

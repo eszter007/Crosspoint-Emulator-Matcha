@@ -27,8 +27,13 @@ class HalDisplay {
                             bool fromProgmem = false) const;
 
   void displayBuffer(RefreshMode mode = FAST_REFRESH, bool turnOffScreen = false);
+  void displayGrayscaleBase(RefreshMode fallback = HALF_REFRESH, bool turnOffScreen = false);
   void refreshDisplay(RefreshMode mode = FAST_REFRESH, bool turnOffScreen = false);
   void deepSleep();
+
+  // Real-hardware waveform preconditioning before a grayscale pass; no-op in sim.
+  void preconditionGrayscale();
+  void preconditionGrayscale(uint16_t x, uint16_t y, uint16_t w, uint16_t h);
 
   uint8_t* getFrameBuffer() const;
 

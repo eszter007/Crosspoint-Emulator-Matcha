@@ -117,11 +117,22 @@ bool extractGeminiText(const std::string& resp, std::string& out) {
 }  // namespace
 
 EpubReaderTranslationActivity::EpubReaderTranslationActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
-                                                             std::string sourceText)
-    : Activity("Translation", renderer, mappedInput), sourceText(std::move(sourceText)) {}
+                                                             std::string sourceText, std::string preTranslatedText)
+    : Activity("Translation", renderer, mappedInput), sourceText(std::move(sourceText)) {
+  if (!preTranslatedText.empty()) {
+    translatedText = std::move(preTranslatedText);
+    hasPreTranslation = true;
+    state = SHOWING_RESULT;
+  }
+}
 
 void EpubReaderTranslationActivity::onEnter() {
   Activity::onEnter();
+
+  if (hasPreTranslation) {
+    requestUpdate();
+    return;
+  }
 
   s_spinnerRendered = false;
   s_callStarted = false;

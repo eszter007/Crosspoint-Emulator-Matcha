@@ -94,6 +94,12 @@ int main(int argc, char** argv) {
   (void)argc;
   (void)argv;
 
+  // Serial/log output goes through putchar() -> stdout, which defaults to
+  // fully-buffered when not attached to a TTY (e.g. piped to a file for
+  // debugging). Line-buffer it so log lines show up as they're printed
+  // instead of sitting in the buffer until it fills or the process exits.
+  setvbuf(stdout, nullptr, _IOLBF, 0);
+
   // Ensure ./sdcard is findable: if run from build/, chdir to project root
   if (access("./sdcard", F_OK) != 0 && access("../sdcard", F_OK) == 0) {
     if (chdir("..") != 0) {

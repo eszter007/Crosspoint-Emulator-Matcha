@@ -213,10 +213,15 @@ void EInkDisplay::displayGrayBuffer(bool) {
   render_gray_to_texture(g_bwBuffer, g_grayLsbBuffer, g_grayMsbBuffer);
 }
 void EInkDisplay::refreshDisplay(RefreshMode mode, bool) { displayBuffer(mode); }
+void EInkDisplay::displayGrayscaleBase(RefreshMode fallback, bool turnOffScreen) { displayBuffer(fallback, turnOffScreen); }
 void EInkDisplay::grayscaleRevert() {}
 void EInkDisplay::setCustomLUT(bool, const unsigned char*) {}
 void EInkDisplay::deepSleep() { isScreenOn = false; }
 void EInkDisplay::saveFrameBufferAsPBM(const char*) {}
+// Real-hardware waveform preconditioning before a grayscale pass; no
+// comparable panel timing concern in the sim.
+void EInkDisplay::preconditionGrayscale() {}
+void EInkDisplay::preconditionGrayscale(uint16_t, uint16_t, uint16_t, uint16_t) {}
 
 HalDisplay::HalDisplay() : einkDisplay(0, 0, 0, 0, 0, 0) {}
 HalDisplay::~HalDisplay() = default;
@@ -233,10 +238,17 @@ void HalDisplay::drawImageTransparent(const uint8_t* d, uint16_t x, uint16_t y, 
 void HalDisplay::displayBuffer(RefreshMode mode, bool turnOffScreen) {
   einkDisplay.displayBuffer(static_cast<EInkDisplay::RefreshMode>(mode), turnOffScreen);
 }
+void HalDisplay::displayGrayscaleBase(RefreshMode fallback, bool turnOffScreen) {
+  einkDisplay.displayGrayscaleBase(static_cast<EInkDisplay::RefreshMode>(fallback), turnOffScreen);
+}
 void HalDisplay::refreshDisplay(RefreshMode mode, bool turnOff) {
   einkDisplay.refreshDisplay(static_cast<EInkDisplay::RefreshMode>(mode), turnOff);
 }
 void HalDisplay::deepSleep() { einkDisplay.deepSleep(); }
+void HalDisplay::preconditionGrayscale() { einkDisplay.preconditionGrayscale(); }
+void HalDisplay::preconditionGrayscale(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
+  einkDisplay.preconditionGrayscale(x, y, w, h);
+}
 uint8_t* HalDisplay::getFrameBuffer() const { return einkDisplay.getFrameBuffer(); }
 void HalDisplay::copyGrayscaleBuffers(const uint8_t* l, const uint8_t* m) { einkDisplay.copyGrayscaleBuffers(l, m); }
 void HalDisplay::copyGrayscaleLsbBuffers(const uint8_t* l) { einkDisplay.copyGrayscaleLsbBuffers(l); }

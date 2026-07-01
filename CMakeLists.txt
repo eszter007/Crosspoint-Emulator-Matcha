@@ -6,6 +6,11 @@ set(CMAKE_CXX_STANDARD 20)
 if(NOT DEFINED CROSSPOINT_ROOT)
   set(CROSSPOINT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../Crosspoint")
 endif()
+# if(EXISTS ...) is only well-defined for absolute paths; a relative
+# CROSSPOINT_ROOT (e.g. -DCROSSPOINT_ROOT=./crosspoint-reader) resolves
+# against the process's working directory, not CMAKE_CURRENT_SOURCE_DIR,
+# silently breaking every EXISTS check below when configured from build/.
+get_filename_component(CROSSPOINT_ROOT "${CROSSPOINT_ROOT}" ABSOLUTE BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
 if(DEFINED SDL2_ROOT)
   set(CMAKE_PREFIX_PATH "${SDL2_ROOT};${CMAKE_PREFIX_PATH}")
@@ -100,6 +105,7 @@ file(GLOB CROSSPOINT_LIB_CPP
   "${CROSSPOINT_ROOT}/lib/uzlib/src/*.c"
   "${CROSSPOINT_ROOT}/lib/KOReaderSync/*.cpp"
   "${CROSSPOINT_ROOT}/lib/OpdsParser/*.cpp"
+  "${CROSSPOINT_ROOT}/lib/MangaPanel/*.cpp"
   "${CROSSPOINT_ROOT}/lib/OpdsParser/*/*.cpp"
 )
 list(FILTER CROSSPOINT_LIB_CPP EXCLUDE REGEX ".*/hal/.*")
@@ -161,6 +167,8 @@ target_compile_definitions(crosspoint_emulator PRIVATE
   XML_GE=0
   XML_CONTEXT_BYTES=1024
   USE_UTF8_LONG_NAMES=1
+  ENABLE_SERIAL_LOG=1
+  LOG_LEVEL=2
 )
 
 

@@ -83,6 +83,7 @@ class Stream : public Print {
 class SerialStub : public Print {
  public:
   void begin(unsigned long) {}
+  void setTxTimeoutMs(uint32_t) {}
   operator bool() const { return true; }
   int available() const { return 0; }
   int read() { return -1; }

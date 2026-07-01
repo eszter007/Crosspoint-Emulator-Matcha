@@ -130,6 +130,22 @@ Place `.cpfont` files in `sdcard/.fonts/`. The emulator runs with built-in fonts
 
 ---
 
+## Keyboard shortcuts
+
+| Keys | Action |
+|------|--------|
+| Arrow keys | Up / Down / Left / Right (physical buttons) |
+| Enter / Numpad Enter | Confirm |
+| Backspace / Escape | Back |
+| P | Power |
+| P + Down (hold) | **Take a screenshot** — saves a BMP to `sdcard/screenshots/` and flashes a border on-screen to confirm the capture. Filename includes the book title, chapter, page, and progress percentage when a book is open. |
+
+### Waking from sleep
+
+Sleep mode has no real low-power state on desktop — the simulated "deep sleep" call is a no-op, so once the sleep screen is showing, press **Enter** to wake up. This resumes the last open book (if sleep was entered from the reader) or returns to Home, mirroring the same logic a real device uses after waking from an actual reboot. On real hardware, wake is triggered by holding the physical Power button instead.
+
+---
+
 ## Architecture
 
 The emulator runs the firmware source unchanged, replacing hardware components with desktop equivalents:
@@ -177,7 +193,11 @@ Crosspoint-Emulator/
 
 **Vertical text layout looks stale after a code change** — Delete `sdcard/.crosspoint/` and restart.
 
+**Terminal is noisy with `[DBG]`/`[INF]` log lines** — Debug logging (`ENABLE_SERIAL_LOG`, `LOG_LEVEL=2`) is on by default in this fork's `CMakeLists.txt`, useful for diagnosing emulator-specific issues. Lower `LOG_LEVEL` to `1` (errors + info) or `0` (errors only) there if you want quieter output.
+
 **SDL2 not found** — `brew install sdl2` (macOS) or `apt install libsdl2-dev` (Linux).
+
+**File Transfer / WiFi Setup / KOReader Sync / OPDS / Calibre Connect / Firmware Update show "Not available in the emulator"** — Expected. These activities need real WiFi/HTTP hardware and are excluded from the emulator build (see `sim/src/excluded_activity_stubs.cpp`); the stub screen exists so entering them doesn't silently freeze — press **Back** to return home. They work normally on real hardware.
 
 For general build and emulator issues not specific to the Japanese features, see the [upstream README](https://github.com/jonmooreai/Crosspoint-Emulator).
 

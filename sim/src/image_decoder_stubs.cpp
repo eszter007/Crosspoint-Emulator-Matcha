@@ -117,18 +117,30 @@ bool decode(const std::string& path, GfxRenderer& renderer, const RenderConfig& 
     }
   }
 
-  // Render this pass directly to the framebuffer.
+  // Render this pass directly to the framebuffer. DirectPixelWriter does no
+  // bounds checking on its own (by design -- see its header comment), so a
+  // destY/destX past the logical screen must be skipped here: an out-of-range
+  // input maps, via the orientation rotation, to a physical column past the
+  // row's byte width, and the resulting byte index spills into an adjacent
+  // row's bytes instead of being dropped -- corrupting unrelated content.
+  // The real firmware's JPEGDEC-based decoder already clamps for this; this
+  // sim-only stub was missing the equivalent guard.
+  const int screenW = renderer.getScreenWidth();
+  const int screenH = renderer.getScreenHeight();
   DirectPixelWriter pw;
   pw.init(renderer);
   for (int row = 0; row < outH; row++) {
-    const uint8_t* rowBuf = packed.data() + static_cast<size_t>(row) * bytesPerRow;
     const int destY = config.y + row;
+    if (destY < 0 || destY >= screenH) continue;
+    const uint8_t* rowBuf = packed.data() + static_cast<size_t>(row) * bytesPerRow;
     pw.beginRow(destY);
     int colStart, colEnd;
     pw.bandColRange(config.x, outW, colStart, colEnd);
     for (int col = colStart; col < colEnd; col++) {
+      const int destX = config.x + col;
+      if (destX < 0 || destX >= screenW) continue;
       const uint8_t v = (rowBuf[col >> 2] >> (6 - (col & 3) * 2)) & 0x03;
-      pw.writePixel(config.x + col, v);
+      pw.writePixel(destX, v);
     }
   }
 

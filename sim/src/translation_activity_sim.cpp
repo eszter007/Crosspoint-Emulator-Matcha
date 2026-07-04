@@ -117,14 +117,21 @@ bool extractGeminiText(const std::string& resp, std::string& out) {
 }  // namespace
 
 EpubReaderTranslationActivity::EpubReaderTranslationActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
-                                                             std::string sourceText, std::string preTranslatedText)
-    : Activity("Translation", renderer, mappedInput), sourceText(std::move(sourceText)) {
+                                                             std::string sourceText, std::string preTranslatedText,
+                                                             const bool resumedAfterRestart)
+    : Activity("Translation", renderer, mappedInput),
+      sourceText(std::move(sourceText)),
+      resumedAfterRestart(resumedAfterRestart) {
   if (!preTranslatedText.empty()) {
     translatedText = std::move(preTranslatedText);
     hasPreTranslation = true;
     state = SHOWING_RESULT;
   }
 }
+
+// Desktop build: heap is effectively unlimited, the gates never fail, so the
+// stash-and-restart fallback is never taken. Defined only so the class is complete.
+bool EpubReaderTranslationActivity::stashAndRestart() { return false; }
 
 void EpubReaderTranslationActivity::onEnter() {
   Activity::onEnter();

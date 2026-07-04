@@ -106,6 +106,18 @@ bool HalClock::formatTime(char* buf, size_t bufSize, uint8_t utcOffsetQuarterHou
 
 bool HalClock::syncFromNTP() { return _available; }
 
+// Desktop host: the OS clock is always correct, so validity is a given and the SD stash /
+// build-date seeding is unnecessary.
+bool HalClock::systemTimeValid() { return true; }
+void HalClock::restoreSystemTime() const {}
+void HalClock::persistSystemTime() const {}
+
+time_t HalClock::localEpoch(uint8_t utcOffsetQuarterHoursBiased) {
+  if (utcOffsetQuarterHoursBiased > 104) utcOffsetQuarterHoursBiased = 104;
+  const int offsetQuarterHours = static_cast<int>(utcOffsetQuarterHoursBiased) - 48;
+  return time(nullptr) + static_cast<time_t>(offsetQuarterHours) * 15 * 60;
+}
+
 bool HalClock::writeTimeToRTC(uint8_t, uint8_t, uint8_t) { return true; }
 
 void HalTiltSensor::begin() { _available = false; }

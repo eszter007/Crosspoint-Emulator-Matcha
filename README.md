@@ -2,7 +2,7 @@
 
 A fork of [jonmooreai/Crosspoint-Emulator](https://github.com/jonmooreai/Crosspoint-Emulator).
 
-The emulator runs the [Crosspoint](https://github.com/crosspoint-reader/crosspoint-reader) e-reader firmware on your Mac or PC using an SDL2 window, directory-backed SD card, and keyboard input. This fork targets the https://github.com/eszter007/crosspoint-reader-JP, a Japanese-enabled Crosspoint firmware fork rather than mainline Crosspoint.
+The emulator runs the [Crosspoint](https://github.com/crosspoint-reader/crosspoint-reader) e-reader firmware on your Mac or PC using an SDL2 window, directory-backed SD card, and keyboard input. This fork targets the [Matcha Reader](https://github.com/eszter007/matcha-reader), a Japanese-enabled Crosspoint firmware fork rather than mainline Crosspoint.
 
 ---
 

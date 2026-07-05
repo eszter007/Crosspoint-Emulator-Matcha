@@ -1,4 +1,4 @@
-# Crosspoint Emulator — Japanese Reading Fork for Matcha Reader
+# Crosspoint Emulator — Fork for Matcha Reader
 
 A fork of [jonmooreai/Crosspoint-Emulator](https://github.com/jonmooreai/Crosspoint-Emulator).
 

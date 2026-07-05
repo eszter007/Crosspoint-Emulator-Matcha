@@ -26,8 +26,7 @@ The upstream emulator ([jonmooreai/Crosspoint-Emulator](https://github.com/jonmo
 ```sh
 git clone https://github.com/eszter007/Crosspoint-Emulator.git
 cd Crosspoint-Emulator
-git clone https://github.com/eszter007/crosspoint-reader-JP.git crosspoint-reader
-cd crosspoint-reader && git checkout claude/vertical-japanese-text-pyosmu && cd ..
+git clone https://github.com/eszter007/matcha-reader.git crosspoint-reader
 ```
 
 > **Note:** This fork clones the firmware as `crosspoint-reader/` inside the emulator directory rather than as a sibling `../Crosspoint`. The `CMakeLists.txt` has been updated accordingly.

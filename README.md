@@ -8,8 +8,8 @@ The emulator runs the [Crosspoint](https://github.com/crosspoint-reader/crosspoi
 
 ## What this fork adds
 
-The upstream emulator ([jonmooreai/Crosspoint-Emulator](https://github.com/jonmooreai/Crosspoint-Emulator)) already provides a complete desktop emulator with a library grid, thumbnail prewarm, UX polish (button press feedback, centralized constants), and detailed build documentation. This fork does not change any of that. It improves support for rendering the Japanese language learning fork:
-https://github.com/eszter007/crosspoint-reader-JP
+The upstream emulator ([jonmooreai/Crosspoint-Emulator](https://github.com/jonmooreai/Crosspoint-Emulator)) already provides a complete desktop emulator with a library grid, thumbnail prewarm, UX polish (button press feedback, centralized constants), and detailed build documentation. This fork does not change any of that. It improves support for rendering the Japanese language learning fork Matcha Reader:
+https://github.com/eszter007/matcha-reader
 
 ---
 

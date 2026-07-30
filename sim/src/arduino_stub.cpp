@@ -3,5 +3,6 @@
 #include "Wire.h"
 
 SerialStub Serial;
+SerialStub Serial0;
 SPIClass SPI;
 TwoWire Wire;

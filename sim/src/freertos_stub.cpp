@@ -80,6 +80,11 @@ int xTaskCreate(void (*fn)(void*), const char*, unsigned, void* param, int, Task
   return pdPASS;
 }
 
+int xTaskCreatePinnedToCore(void (*fn)(void*), const char* name, unsigned stack, void* param, int prio,
+                            TaskHandle_t* handle, BaseType_t) {
+  return xTaskCreate(fn, name, stack, param, prio, handle);
+}
+
 void vTaskDelete(TaskHandle_t h) {
   if (!h) return;
   TaskInfo* info = nullptr;
@@ -120,6 +125,8 @@ BaseType_t xTaskNotify(TaskHandle_t task, uint32_t value, eNotifyAction action) 
   return pdTRUE;
 }
 
+BaseType_t xTaskNotifyGive(TaskHandle_t task) { return xTaskNotify(task, 0, eIncrement); }
+
 uint32_t ulTaskNotifyTake(BaseType_t clearCountOnExit, TickType_t ticksToWait) {
   const TaskHandle_t self = currentHandleOrMain();
 
@@ -149,17 +156,29 @@ uint32_t ulTaskNotifyTake(BaseType_t clearCountOnExit, TickType_t ticksToWait) {
   return ret;
 }
 
+uint32_t ulTaskNotifyValueClear(TaskHandle_t task, uint32_t bitsToClear) {
+  const TaskHandle_t handle = task ? task : currentHandleOrMain();
+  std::lock_guard<std::mutex> lock(s_notifyMutex);
+  uint32_t& value = s_notifyCounts[handle];
+  const uint32_t previous = value;
+  value &= ~bitsToClear;
+  return previous;
+}
+
 SemaphoreHandle_t xSemaphoreCreateMutex() { return reinterpret_cast<SemaphoreHandle_t>(new SimMutex()); }
 
-void xSemaphoreTake(SemaphoreHandle_t m, unsigned) {
+BaseType_t xSemaphoreTake(SemaphoreHandle_t m, TickType_t timeout) {
   auto* mutexObj = static_cast<SimMutex*>(m);
-  if (!mutexObj) return;
+  if (!mutexObj) return pdFALSE;
 
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout);
   while (!mutexObj->mtx.try_lock()) {
+    if (timeout == 0 || (timeout != portMAX_DELAY && std::chrono::steady_clock::now() >= deadline)) return pdFALSE;
     checkCancelled();
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
   mutexObj->owner.store(currentHandleOrMain());
+  return pdTRUE;
 }
 
 void xSemaphoreGive(SemaphoreHandle_t m) {

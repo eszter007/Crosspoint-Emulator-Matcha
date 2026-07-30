@@ -13,6 +13,9 @@
 #define O_CREAT   0x04
 #define O_TRUNC   0x08
 #endif
+#ifndef O_WRITE
+#define O_WRITE O_WRONLY
+#endif
 typedef int oflag_t;
 
 class FsFile : public Stream {

@@ -31,6 +31,7 @@ class HalFile : public Print {
   void flush() override {}  // FsFile has no sync method; flush is a no-op in the stub
   size_t getName(char* name, size_t len) { return file_.getName(name, len); }
   size_t size() { return file_.size(); }
+  uint32_t modifiedStamp() { return 0; }
   size_t fileSize() { return size(); }
   uint64_t fileSize64() { return size(); }
   bool seek(size_t pos) { return file_.seek(pos); }
@@ -138,5 +139,4 @@ class HalStorage {
 };
 
 #define Storage HalStorage::getInstance()
-
 

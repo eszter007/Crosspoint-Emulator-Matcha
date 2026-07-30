@@ -171,7 +171,9 @@ std::string getPanicInfo(bool) { return {}; }
 bool isRebootFromPanic() { return false; }
 }  // namespace HalSystem
 
-bool PngToBmpConverter::pngFileToBmpStreamInternal(HalFile&, Print&, int, int, bool, bool) { return false; }
+bool PngToBmpConverter::pngFileToBmpStreamInternal(HalFile&, Print&, int, int, bool, bool, BmpConvertCancelFn, void*) {
+  return false;
+}
 
 bool PngToBmpConverter::pngFileToBmpStream(HalFile& pngFile, Print& bmpOut, bool crop) {
   return pngFileToBmpStreamInternal(pngFile, bmpOut, -1, -1, false, crop);
@@ -183,8 +185,10 @@ bool PngToBmpConverter::pngFileToBmpStreamWithSize(HalFile& pngFile, Print& bmpO
 }
 
 bool PngToBmpConverter::pngFileTo1BitBmpStreamWithSize(HalFile& pngFile, Print& bmpOut, int targetMaxWidth,
-                                                       int targetMaxHeight) {
-  return pngFileToBmpStreamInternal(pngFile, bmpOut, targetMaxWidth, targetMaxHeight, true, true);
+                                                       int targetMaxHeight, BmpConvertCancelFn shouldCancel,
+                                                       void* cancelCtx) {
+  return pngFileToBmpStreamInternal(pngFile, bmpOut, targetMaxWidth, targetMaxHeight, true, true, shouldCancel,
+                                    cancelCtx);
 }
 
 extern "C" uint32_t uzlib_adler32(const void*, unsigned int, uint32_t prev_sum) { return prev_sum; }

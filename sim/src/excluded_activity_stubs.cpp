@@ -10,16 +10,10 @@
 #include "activities/network/CalibreConnectActivity.h"
 
 #include <GfxRenderer.h>
-#include <KOReaderJsonIO.h>
 #include <I18n.h>
 #include "MappedInputManager.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
-
-namespace KOReaderJsonIO {
-bool save(const KOReaderCredentialStore&, const char*) { return true; }
-bool load(KOReaderCredentialStore&, const char*, bool*) { return false; }
-}
 
 // Stubs for activities excluded from emulator (ArduinoJson/WiFi/HTTP deps).
 //

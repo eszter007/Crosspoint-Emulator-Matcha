@@ -27,6 +27,9 @@ class HalDisplay {
                             bool fromProgmem = false) const;
 
   void displayBuffer(RefreshMode mode = FAST_REFRESH, bool turnOffScreen = false);
+  void displayBufferAsync(RefreshMode mode = FAST_REFRESH);
+  void waitRefreshComplete();
+  bool supportsAsyncRefresh() const;
   void displayGrayscaleBase(RefreshMode fallback = HALF_REFRESH, bool turnOffScreen = false);
   void refreshDisplay(RefreshMode mode = FAST_REFRESH, bool turnOffScreen = false);
   void deepSleep();
@@ -36,6 +39,8 @@ class HalDisplay {
   void preconditionGrayscale(uint16_t x, uint16_t y, uint16_t w, uint16_t h);
 
   uint8_t* getFrameBuffer() const;
+  uint8_t* lendFrameBufferStorage(uint32_t* sizeOut);
+  void returnFrameBufferStorage();
 
   void copyGrayscaleBuffers(const uint8_t* lsbBuffer, const uint8_t* msbBuffer);
   void copyGrayscaleLsbBuffers(const uint8_t* lsbBuffer);

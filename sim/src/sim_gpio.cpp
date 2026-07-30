@@ -72,6 +72,7 @@ bool HalGPIO::wasPressed(uint8_t buttonIndex) const {
 }
 
 bool HalGPIO::wasAnyPressed() const { return g_anyPressed; }
+bool HalGPIO::anyButtonDownRaw() { return readButtonState() != 0; }
 
 bool HalGPIO::wasReleased(uint8_t buttonIndex) const {
   if (buttonIndex > BTN_POWER) return false;
@@ -90,11 +91,20 @@ unsigned long HalGPIO::getPowerButtonHeldTime() const {
   return millis() - g_powerPressStartMs;
 }
 
-void HalGPIO::startDeepSleep() {}
+bool HalGPIO::hasTouch() const { return false; }
+bool HalGPIO::wasTouchTap(float&, float&) const { return false; }
+bool HalGPIO::wasTouchDown(float&, float&) const { return false; }
+bool HalGPIO::isTouchTapCandidate(float&, float&, unsigned long&) const { return false; }
+bool HalGPIO::isTouchHeldAt(float&, float&) const { return false; }
+unsigned long HalGPIO::lastTouchHeldMs() const { return 0; }
+bool HalGPIO::wasSwipe(float&, float&, float&, float&) const { return false; }
+bool HalGPIO::wasTouchActivity() const { return false; }
+void HalGPIO::setSharedConfirmPowerShortPressEmitsPower(bool) {}
 
-void HalGPIO::verifyPowerButtonWakeup(uint16_t requiredDurationMs, bool shortPressAllowed) {
+bool HalGPIO::verifyPowerButtonWakeup(uint16_t requiredDurationMs, bool shortPressAllowed) {
   (void)requiredDurationMs;
   (void)shortPressAllowed;
+  return true;
 }
 
 bool HalGPIO::isUsbConnected() const { return true; }

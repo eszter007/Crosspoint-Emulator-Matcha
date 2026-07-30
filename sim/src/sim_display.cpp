@@ -238,6 +238,9 @@ void HalDisplay::drawImageTransparent(const uint8_t* d, uint16_t x, uint16_t y, 
 void HalDisplay::displayBuffer(RefreshMode mode, bool turnOffScreen) {
   einkDisplay.displayBuffer(static_cast<EInkDisplay::RefreshMode>(mode), turnOffScreen);
 }
+void HalDisplay::displayBufferAsync(RefreshMode mode) { displayBuffer(mode); }
+void HalDisplay::waitRefreshComplete() {}
+bool HalDisplay::supportsAsyncRefresh() const { return false; }
 void HalDisplay::displayGrayscaleBase(RefreshMode fallback, bool turnOffScreen) {
   einkDisplay.displayGrayscaleBase(static_cast<EInkDisplay::RefreshMode>(fallback), turnOffScreen);
 }
@@ -250,6 +253,11 @@ void HalDisplay::preconditionGrayscale(uint16_t x, uint16_t y, uint16_t w, uint1
   einkDisplay.preconditionGrayscale(x, y, w, h);
 }
 uint8_t* HalDisplay::getFrameBuffer() const { return einkDisplay.getFrameBuffer(); }
+uint8_t* HalDisplay::lendFrameBufferStorage(uint32_t* sizeOut) {
+  if (sizeOut) *sizeOut = BUFFER_SIZE;
+  return einkDisplay.getFrameBuffer();
+}
+void HalDisplay::returnFrameBufferStorage() { memset(einkDisplay.getFrameBuffer(), 0xFF, BUFFER_SIZE); }
 void HalDisplay::copyGrayscaleBuffers(const uint8_t* l, const uint8_t* m) { einkDisplay.copyGrayscaleBuffers(l, m); }
 void HalDisplay::copyGrayscaleLsbBuffers(const uint8_t* l) { einkDisplay.copyGrayscaleLsbBuffers(l); }
 void HalDisplay::copyGrayscaleMsbBuffers(const uint8_t* m) { einkDisplay.copyGrayscaleMsbBuffers(m); }

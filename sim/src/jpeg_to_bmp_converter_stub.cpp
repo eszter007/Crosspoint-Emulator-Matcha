@@ -69,7 +69,8 @@ static void writeBmpHeader2bit(Print& bmpOut, int width, int height) {
 
 static bool jpegToBmpInternal(HalFile& jpegFile, Print& bmpOut,
                                int targetWidth, int targetHeight,
-                               bool oneBit, bool crop) {
+                               bool oneBit, bool crop, BmpConvertCancelFn shouldCancel = nullptr,
+                               void* cancelCtx = nullptr) {
   // Read entire JPEG into memory
   const int fileSize = jpegFile.size();
   if (fileSize <= 0) return false;
@@ -112,6 +113,10 @@ static bool jpegToBmpInternal(HalFile& jpegFile, Print& bmpOut,
   const uint32_t scaleY_fp = (static_cast<uint32_t>(srcH) << 16) / outH;
 
   for (int outY = 0; outY < outH; outY++) {
+    if (shouldCancel && shouldCancel(cancelCtx)) {
+      stbi_image_free(pixels);
+      return false;
+    }
     memset(rowBuf.data(), 0, bytesPerRow);
     const int srcYStart = (static_cast<uint32_t>(outY) * scaleY_fp) >> 16;
     const int srcYEnd = std::min(
@@ -159,12 +164,14 @@ bool JpegToBmpConverter::jpegFileToBmpStreamWithSize(HalFile& jpegFile, Print& b
 }
 
 bool JpegToBmpConverter::jpegFileTo1BitBmpStreamWithSize(HalFile& jpegFile, Print& bmpOut,
-                                                          int targetWidth, int targetHeight) {
-  return jpegToBmpInternal(jpegFile, bmpOut, targetWidth, targetHeight, true, true);
+                                                          int targetWidth, int targetHeight,
+                                                          BmpConvertCancelFn shouldCancel, void* cancelCtx) {
+  return jpegToBmpInternal(jpegFile, bmpOut, targetWidth, targetHeight, true, true, shouldCancel, cancelCtx);
 }
 
 bool JpegToBmpConverter::jpegFileToBmpStreamInternal(HalFile& jpegFile, Print& bmpOut,
                                                       int targetWidth, int targetHeight,
-                                                      bool oneBit, bool crop) {
-  return jpegToBmpInternal(jpegFile, bmpOut, targetWidth, targetHeight, oneBit, crop);
+                                                      bool oneBit, bool crop, BmpConvertCancelFn shouldCancel,
+                                                      void* cancelCtx) {
+  return jpegToBmpInternal(jpegFile, bmpOut, targetWidth, targetHeight, oneBit, crop, shouldCancel, cancelCtx);
 }

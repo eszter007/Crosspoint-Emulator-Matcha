@@ -12,6 +12,11 @@ endif()
 # silently breaking every EXISTS check below when configured from build/.
 get_filename_component(CROSSPOINT_ROOT "${CROSSPOINT_ROOT}" ABSOLUTE BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
+if(NOT DEFINED FREEINK_SDK_ROOT)
+  set(FREEINK_SDK_ROOT "${CROSSPOINT_ROOT}/freeink-sdk")
+endif()
+get_filename_component(FREEINK_SDK_ROOT "${FREEINK_SDK_ROOT}" ABSOLUTE BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+
 if(DEFINED SDL2_ROOT)
   set(CMAKE_PREFIX_PATH "${SDL2_ROOT};${CMAKE_PREFIX_PATH}")
 endif()
@@ -58,7 +63,6 @@ set(SIM_SOURCES
   sim/src/image_decoder_stubs.cpp
   sim/src/jpeg_to_bmp_converter_stub.cpp
   sim/src/fork_compat_stubs.cpp
-  sim/src/json_settings_stub.cpp
   sim/src/excluded_activity_stubs.cpp
   sim/src/translation_activity_sim.cpp
 )
@@ -106,13 +110,20 @@ file(GLOB CROSSPOINT_LIB_CPP
   "${CROSSPOINT_ROOT}/lib/KOReaderSync/*.cpp"
   "${CROSSPOINT_ROOT}/lib/OpdsParser/*.cpp"
   "${CROSSPOINT_ROOT}/lib/MangaPanel/*.cpp"
+  "${CROSSPOINT_ROOT}/lib/BmpToBmpConverter/*.cpp"
+  "${CROSSPOINT_ROOT}/lib/Memory/*.cpp"
+  "${CROSSPOINT_ROOT}/lib/Serialization/*.cpp"
+  "${CROSSPOINT_ROOT}/lib/miniz/src/*.cpp"
+  "${CROSSPOINT_ROOT}/lib/miniz/src/*.c"
   "${CROSSPOINT_ROOT}/lib/OpdsParser/*/*.cpp"
+  "${FREEINK_SDK_ROOT}/libs/ui/FreeInkUI/src/*.cpp"
 )
 list(FILTER CROSSPOINT_LIB_CPP EXCLUDE REGEX ".*/hal/.*")
 list(FILTER CROSSPOINT_LIB_CPP EXCLUDE REGEX ".*/JpegToFramebufferConverter\\.cpp$")
 list(FILTER CROSSPOINT_LIB_CPP EXCLUDE REGEX ".*/PngToFramebufferConverter\\.cpp$")
 list(FILTER CROSSPOINT_LIB_CPP EXCLUDE REGEX ".*/KOReaderJsonIO\\.cpp$")
 list(FILTER CROSSPOINT_LIB_CPP EXCLUDE REGEX ".*/KOReaderSyncClient\\.cpp$")
+list(FILTER CROSSPOINT_LIB_CPP EXCLUDE REGEX ".*/Serialization/ObfuscationUtils\\.cpp$")
 
 set(ARDUINO_JSON_ROOT "${CROSSPOINT_ROOT}/.pio/libdeps/default/ArduinoJson")
 if(EXISTS "${ARDUINO_JSON_ROOT}/src/ArduinoJson.h")
@@ -127,6 +138,7 @@ add_executable(crosspoint_emulator
 )
 
 file(GLOB LIB_DIRS "${CROSSPOINT_ROOT}/lib/*/")
+file(GLOB FREEINK_INCLUDE_DIRS "${FREEINK_SDK_ROOT}/libs/*/*/include")
 set(LIB_INCLUDES "${CROSSPOINT_ROOT}/src" "${CROSSPOINT_ROOT}/lib")
 foreach(LIB_DIR ${LIB_DIRS})
   list(APPEND LIB_INCLUDES "${LIB_DIR}")
@@ -139,6 +151,8 @@ target_include_directories(crosspoint_emulator PRIVATE
   ${CROSSPOINT_ROOT}/lib/Epub/Epub/parsers
   ${CROSSPOINT_ROOT}/lib/Epub/Epub/hyphenation
   ${CROSSPOINT_ROOT}/lib/uzlib/src
+  ${CROSSPOINT_ROOT}/lib/miniz/src
+  ${FREEINK_INCLUDE_DIRS}
 )
 
 if(EXISTS "${ARDUINO_JSON_ROOT}/src")

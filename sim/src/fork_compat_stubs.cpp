@@ -5,10 +5,14 @@
 #include <Logging.h>
 #include <ObfuscationUtils.h>
 #include <PngToBmpConverter.h>
+#include <SDL.h>
 
 #include <cstdint>
 #include <cstdarg>
 #include <cstdio>
+#include <cstdlib>
+
+#include "sim_display.h"
 
 HalPowerManager powerManager;
 HalClock halClock;
@@ -38,7 +42,28 @@ void HalPowerManager::begin() {}
 
 void HalPowerManager::setPowerSaving(bool enabled) { isLowPower = enabled; }
 
-void HalPowerManager::startDeepSleep(HalGPIO&) const {}
+// On hardware this never returns: the chip halts until a wake reset. As an empty stub it
+// returned at once, so main.cpp's idle check fired again on the very next iteration (nothing
+// had reset its inactivity timer), the firmware re-entered sleep, and the sleep screen was
+// repainted every loop. That is the rapid flicker, and it is a photosensitivity hazard.
+//
+// Park here instead, the way the hardware would, until a wake key is held. Returning while the
+// key is still down matters: the firmware's next gpio.update() then sees a press, resets its
+// inactivity timer, and SleepActivity::loop() routes back into the book or Home. Returning
+// after the release would leave the timer stale and drop straight back into sleep.
+void HalPowerManager::startDeepSleep(HalGPIO&) const {
+  for (;;) {
+    if (!sim_display_pump_events()) {
+      // Window closed while asleep. Exit the way main_sim does, skipping static teardown.
+      sim_display_shutdown();
+      std::_Exit(0);
+    }
+    // Polled state, not events, so this agrees with how sim_gpio reads the buttons.
+    const Uint8* keys = SDL_GetKeyboardState(nullptr);
+    if (keys[SDL_SCANCODE_RETURN] || keys[SDL_SCANCODE_KP_ENTER] || keys[SDL_SCANCODE_P]) return;
+    SDL_Delay(16);  // ~60Hz, enough to stay responsive without spinning a core
+  }
+}
 
 uint16_t HalPowerManager::getBatteryPercentage() const { return 100; }
 

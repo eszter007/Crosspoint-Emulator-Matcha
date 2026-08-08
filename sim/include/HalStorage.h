@@ -120,7 +120,11 @@ class HalStorage {
    return openFileForRead(moduleName, path.c_str(), file);
   }
   bool openFileForWrite(const char* moduleName, const char* path, HalFile& file) {
-   file = open(path, O_WRONLY | O_CREAT | O_TRUNC);
+   // O_RDWR, not O_WRONLY: the device SDK opens this call O_RDWR (as does SDCardManager here),
+   // and the firmware relies on it. Section reads pages back out of the .bin it is still
+   // appending to, so a write-only handle makes every one of those reads fail and the reader
+   // draws a blank page.
+   file = open(path, O_RDWR | O_CREAT | O_TRUNC);
    return file.isOpen();
   }
   bool openFileForWrite(const char* moduleName, const std::string& path, HalFile& file) {

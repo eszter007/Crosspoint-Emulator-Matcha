@@ -204,4 +204,13 @@ std::string deobfuscateFromBase64(const char* encoded, bool* ok) {
   }
   return encoded ? std::string(encoded) : std::string();
 }
+
+std::string deobfuscateFromBase64(const char* encoded, const size_t maxDecodedLength, bool* ok, bool* tooLong) {
+  std::string out = encoded ? std::string(encoded) : std::string();
+  const bool over = out.size() > maxDecodedLength;
+  if (tooLong) *tooLong = over;
+  if (over) out.clear();
+  if (ok) *ok = !over;
+  return out;
+}
 }  // namespace obfuscation

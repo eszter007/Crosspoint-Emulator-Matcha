@@ -3,8 +3,12 @@
 #include "sim_spi_bus.h"
 
 #include <SDL.h>
+#include <sys/stat.h>
+
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 
 static const int WINDOW_WIDTH = static_cast<int>(EInkDisplay::DISPLAY_HEIGHT);
 static const int WINDOW_HEIGHT = static_cast<int>(EInkDisplay::DISPLAY_WIDTH);
@@ -270,10 +274,65 @@ uint16_t HalDisplay::getDisplayHeight() const { return DISPLAY_HEIGHT; }
 uint16_t HalDisplay::getDisplayWidthBytes() const { return DISPLAY_WIDTH_BYTES; }
 uint32_t HalDisplay::getBufferSize() const { return BUFFER_SIZE; }
 
+namespace {
+// Cmd+S (Ctrl+S on Linux) writes what is on screen to screenshots/, at the panel's exact
+// 800x480 -- unlike an OS window grab, which picks up chrome and Retina scaling.
+//
+// BMP because that is all SDL2 writes without SDL_image. miniz is vendored but compiled with
+// MINIZ_NO_DEFLATE_APIS, so its PNG writer is not built, and turning deflate on would grow the
+// firmware for an emulator convenience. Convert afterwards, e.g.
+//   sips -s format png screenshots/*.bmp --out docs/images/screenshots/
+void save_screenshot() {
+  if (!g_renderer) return;
+
+  int w = 0, h = 0;
+  SDL_GetRendererOutputSize(g_renderer, &w, &h);
+  SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, w, h, 24, SDL_PIXELFORMAT_RGB24);
+  if (!surface) {
+    printf("[SHOT] surface alloc failed: %s\n", SDL_GetError());
+    return;
+  }
+  // Redraw the frame before reading. SDL_RenderPresent swaps buffers and leaves the backbuffer
+  // undefined, so reading it after the last present returns a stale or empty frame -- which is
+  // what the first version of this did. g_texture still holds the current frame, so copy it in,
+  // read, then present again to leave the window as it was.
+  SDL_RenderClear(g_renderer);
+  SDL_RenderCopy(g_renderer, g_texture, nullptr, nullptr);
+  const int rc = SDL_RenderReadPixels(g_renderer, nullptr, SDL_PIXELFORMAT_RGB24, surface->pixels, surface->pitch);
+  SDL_RenderPresent(g_renderer);
+  if (rc != 0) {
+    printf("[SHOT] read failed: %s\n", SDL_GetError());
+    SDL_FreeSurface(surface);
+    return;
+  }
+
+  mkdir("screenshots", 0755);  // fails harmlessly when it already exists
+  char path[128];
+  const std::time_t now = std::time(nullptr);
+  std::tm tm{};
+  localtime_r(&now, &tm);
+  std::strftime(path, sizeof(path), "screenshots/crosspoint-%Y%m%d-%H%M%S.bmp", &tm);
+
+  if (SDL_SaveBMP(surface, path) == 0) {
+    printf("[SHOT] %s (%dx%d)\n", path, w, h);
+  } else {
+    printf("[SHOT] save failed: %s\n", SDL_GetError());
+  }
+  fflush(stdout);
+  SDL_FreeSurface(surface);
+}
+}  // namespace
+
 bool sim_display_pump_events(void) {
   SDL_Event e;
   while (SDL_PollEvent(&e)) {
     if (e.type == SDL_QUIT) return false;
+    // Buttons are read through SDL_GetKeyboardState, so consuming key events here does not
+    // interfere with them. S is not bound to any button.
+    if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_s && (e.key.keysym.mod & (KMOD_GUI | KMOD_CTRL)) &&
+        e.key.repeat == 0) {
+      save_screenshot();
+    }
   }
   return true;
 }

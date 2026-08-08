@@ -16,6 +16,10 @@ Makefile
 # User content
 sdcard/
 .crosspoint/
+# The firmware is cloned in here (see Quick start), it is its own repository
+crosspoint-reader/
+# Captures from Cmd+S
+screenshots/
 
 # macOS
 .DS_Store

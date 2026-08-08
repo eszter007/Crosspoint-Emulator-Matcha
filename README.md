@@ -4,6 +4,17 @@ A fork of [jonmooreai/Crosspoint-Emulator](https://github.com/jonmooreai/Crosspo
 
 The emulator runs the [Crosspoint](https://github.com/crosspoint-reader/crosspoint-reader) e-reader firmware on your Mac or PC using an SDL2 window, directory-backed SD card, and keyboard input. This fork targets the [Matcha Reader](https://github.com/eszter007/matcha-reader), a Japanese-enabled Crosspoint firmware fork rather than mainline Crosspoint.
 
+> [!WARNING]
+> **Photosensitive epilepsy: the sleep screen currently flickers rapidly.**
+>
+> There is a known bug where the emulator's sleep screen repaints very fast instead of settling on a
+> still image, producing a strong strobing flicker. If you are photosensitive, do not let the emulator
+> go to sleep: set **Time to Sleep** to **Never** in Settings, or close the window rather than leaving
+> it idle. Press **Enter** to wake it if it does start.
+>
+> This is an emulator bug only. Real e-ink hardware cannot flicker like this, since the panel holds
+> its image without being redrawn.
+
 ---
 
 ## What this fork adds
@@ -137,9 +148,14 @@ Place `.cpfont` files in `sdcard/.fonts/`. The emulator runs with built-in fonts
 | Enter / Numpad Enter | Confirm |
 | Backspace / Escape | Back |
 | P | Power |
-| P + Down (hold) | **Take a screenshot** — saves a BMP to `sdcard/screenshots/` and flashes a border on-screen to confirm the capture. Filename includes the book title, chapter, page, and progress percentage when a book is open. |
+| P + Down (hold) | **Firmware screenshot** — the device's own feature, so it also works on real hardware. Saves a BMP to `sdcard/screenshots/` and flashes a border to confirm. The filename carries the book title, chapter, page and progress when a book is open. |
+| Cmd + S (Ctrl + S on Linux) | **Emulator screenshot** — captures the panel exactly as shown, 480x800, no border flash and no window chrome, to `screenshots/` beside the binary. Useful for documentation images. |
 
 ### Waking from sleep
+
+> [!WARNING]
+> The sleep screen currently flickers rapidly instead of holding a still image. See the photosensitive
+> epilepsy warning at the top of this README.
 
 Sleep mode has no real low-power state on desktop — the simulated "deep sleep" call is a no-op, so once the sleep screen is showing, press **Enter** to wake up. This resumes the last open book (if sleep was entered from the reader) or returns to Home, mirroring the same logic a real device uses after waking from an actual reboot. On real hardware, wake is triggered by holding the physical Power button instead.
 

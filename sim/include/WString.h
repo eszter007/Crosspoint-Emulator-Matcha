@@ -8,7 +8,11 @@ class String : public Print {
  public:
   String() : s_(), readPos_(0) {}
   String(const char* c) : s_(c ? c : ""), readPos_(0) {}
-  String(const std::string& s) : s_(s), readPos_(0) {}
+  // explicit: Arduino's String has no std::string constructor at all. Leaving
+  // this implicit made every FsHelpers extension check ambiguous for a
+  // std::string argument -- std::string converts just as well to String as it
+  // does to the std::string_view the check really declares.
+  explicit String(const std::string& s) : s_(s), readPos_(0) {}
   String(char c) : s_(1, c), readPos_(0) {}
   String(int n) : s_(std::to_string(n)), readPos_(0) {}
   String(unsigned n) : s_(std::to_string(n)), readPos_(0) {}
@@ -171,3 +175,9 @@ inline bool operator!=(const char* a, const String& b) {
 inline bool operator!=(const String& a, const String& b) {
   return a.str() != b.str();
 }
+
+// Out of line: Stream and SerialStub are declared before String exists (String
+// derives from Print), but Arduino's readStringUntil returns a String and
+// firmware code assigns it straight into one.
+inline String Stream::readStringUntil(char) { return String(); }
+inline String SerialStub::readStringUntil(char) { return String(); }

@@ -42,6 +42,20 @@ inline void yield() {
   std::this_thread::sleep_for(std::chrono::microseconds(100));
 }
 
+// Pin I/O. BoardConfig's holdPowerRails()/releaseSdRail() drive real latch and
+// power-enable pins on hardware; the emulator has no pins, so these record
+// nothing and do nothing. Present so the SDK board header compiles unmodified.
+#define INPUT 0x0
+#define OUTPUT 0x1
+#define INPUT_PULLUP 0x2
+#define INPUT_PULLDOWN 0x3
+#define LOW 0x0
+#define HIGH 0x1
+
+inline void pinMode(int, int) {}
+inline void digitalWrite(int, int) {}
+inline int digitalRead(int) { return HIGH; }
+
 // Arduino random(): random(max) returns 0..max-1; random(min,max) returns min..max-1
 inline long random(long max) {
   return max > 0 ? static_cast<long>(rand() % static_cast<unsigned long>(max)) : 0;
@@ -50,6 +64,8 @@ inline long random(long min, long max) {
   return min + random(max - min);
 }
 inline void randomSeed(unsigned long) { /* no-op */ }
+
+class String;
 
 class Print {
  public:
@@ -75,7 +91,8 @@ class Stream : public Print {
  public:
   virtual int available() { return 0; }
   virtual int read() { return -1; }
-  std::string readStringUntil(char) { return ""; }
+  // Defined in WString.h, once String is a complete type.
+  String readStringUntil(char terminator);
   virtual int peek() { return -1; }
   size_t write(uint8_t c) override { return 0; }
 };
@@ -87,7 +104,8 @@ class SerialStub : public Print {
   operator bool() const { return true; }
   int available() const { return 0; }
   int read() { return -1; }
-  std::string readStringUntil(char) { return ""; }
+  // Defined in WString.h, once String is a complete type.
+  String readStringUntil(char terminator);
   size_t write(uint8_t c) override {
     putchar(static_cast<char>(c));
     return 1;
@@ -114,6 +132,7 @@ using HWCDC = SerialStub;
 
 #include "ESP.h"
 #include "SPI.h"
+#include "WString.h"
 
 #ifndef RTC_NOINIT_ATTR
 #define RTC_NOINIT_ATTR

@@ -73,12 +73,35 @@ void KOReaderAuthActivity::performAuthentication() {}
 void KOReaderAuthActivity::onEnter() { Activity::onEnter(); requestUpdate(); }
 void KOReaderAuthActivity::onExit() { Activity::onExit(); }
 
+KOReaderSyncActivity::KOReaderSyncActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
+                                           const std::string& epubPath, int currentSpineIndex, int currentPage,
+                                           int totalPagesInSpine, SavedProgressPosition localKoPos,
+                                           std::string localChapterName, std::optional<uint16_t> currentParagraphIndex)
+    : Activity("KOReaderSync", renderer, mappedInput),
+      UiAppHost(renderer),
+      epubPath(epubPath),
+      localChapterName(std::move(localChapterName)),
+      currentSpineIndex(currentSpineIndex),
+      currentPage(currentPage),
+      totalPagesInSpine(totalPagesInSpine),
+      currentParagraphIndex(currentParagraphIndex),
+      remoteProgress{},
+      remotePosition{},
+      localProgress(std::move(localKoPos)) {}
+
 void KOReaderSyncActivity::onEnter() { Activity::onEnter(); requestUpdate(); }
 void KOReaderSyncActivity::onExit() { Activity::onExit(); }
 void KOReaderSyncActivity::loop() { backPressedToExit(*this, mappedInput); }
 void KOReaderSyncActivity::render(RenderLock&&) {
   renderNotAvailableInEmulator(renderer, mappedInput, "KOReader Sync");
 }
+
+OpdsBookBrowserActivity::OpdsBookBrowserActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
+                                                 OpdsServer server)
+    : Activity("OpdsBookBrowser", renderer, mappedInput),
+      UiAppHost(renderer),
+      buttonNavigator(),
+      server(std::move(server)) {}
 
 void OpdsBookBrowserActivity::loop() { backPressedToExit(*this, mappedInput); }
 void OpdsBookBrowserActivity::render(RenderLock&&) {
@@ -93,6 +116,10 @@ void OtaUpdateActivity::loop() { backPressedToExit(*this, mappedInput); }
 void OtaUpdateActivity::render(RenderLock&&) {
   renderNotAvailableInEmulator(renderer, mappedInput, "Firmware Update");
 }
+
+WifiSelectionActivity::WifiSelectionActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
+                                             const bool autoConnect)
+    : Activity("WifiSelection", renderer, mappedInput), UiAppHost(renderer), allowAutoConnect(autoConnect) {}
 
 void WifiSelectionActivity::onEnter() { Activity::onEnter(); requestUpdate(); }
 void WifiSelectionActivity::onExit() { Activity::onExit(); }
@@ -111,12 +138,21 @@ void CalibreConnectActivity::render(RenderLock&&) {
 void CalibreConnectActivity::onEnter() { Activity::onEnter(); requestUpdate(); }
 void CalibreConnectActivity::onExit() { Activity::onExit(); }
 
+// FontDownloadActivity is a UiListActivity, so Back and row dispatch come from
+// the base loop() -- unlike the plain-Activity stubs above, which supply their
+// own. The list stays empty: render() draws the "not available" screen instead
+// of a list, so there is never a row to build or activate.
 static SdCardFontRegistry dummyRegistry;
 FontDownloadActivity::FontDownloadActivity(GfxRenderer& r, MappedInputManager& m)
-    : Activity("FontDownload", r, m), fontInstaller_(dummyRegistry) {}
+    : UiListActivity("FontDownload", r, m), fontInstaller_(dummyRegistry) {}
 void FontDownloadActivity::onEnter() { Activity::onEnter(); requestUpdate(); }
 void FontDownloadActivity::onExit() { Activity::onExit(); }
-void FontDownloadActivity::loop() { backPressedToExit(*this, mappedInput); }
 void FontDownloadActivity::render(RenderLock&&) {
   renderNotAvailableInEmulator(renderer, mappedInput, "Font Download");
 }
+int FontDownloadActivity::listCount() const { return 0; }
+void FontDownloadActivity::buildScreen(UiScreen&) {}
+void FontDownloadActivity::activateIndex(int) {}
+freeink::ui::ListNav& FontDownloadActivity::activeNav() { return nav; }
+void FontDownloadActivity::onBackButton() { onGoHome(); }
+bool FontDownloadActivity::handleCustomInput() { return false; }

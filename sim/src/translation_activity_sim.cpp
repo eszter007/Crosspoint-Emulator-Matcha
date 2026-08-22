@@ -10,7 +10,9 @@
 
 #include "activities/reader/EpubReaderTranslationActivity.h"
 
+#if CROSSPOINT_EMU_HAVE_CURL
 #include <curl/curl.h>
+#endif
 
 #include <cstdio>
 #include <cstdlib>
@@ -35,11 +37,13 @@ bool s_spinnerRendered = false;
 bool s_callStarted = false;
 std::string s_apiKey;
 
+#if CROSSPOINT_EMU_HAVE_CURL
 size_t curlWriteCb(char* ptr, size_t size, size_t nmemb, void* userdata) {
   auto* s = static_cast<std::string*>(userdata);
   s->append(ptr, size * nmemb);
   return size * nmemb;
 }
+#endif
 
 std::string jsonEscape(const std::string& in) {
   std::string out;
@@ -197,6 +201,15 @@ bool EpubReaderTranslationActivity::callGeminiApi(const std::string& apiKey) {
   body += jsonEscape(prompt);
   body += "\"}]}],\"generationConfig\":{\"temperature\":0.3,\"maxOutputTokens\":2048}}";
 
+#if !CROSSPOINT_EMU_HAVE_CURL
+  // No HTTP client in this build (iOS, which has no libcurl to link). The rest
+  // of the activity -- its states, layout, and result rendering -- still runs,
+  // so only the request itself is missing.
+  (void)url;
+  (void)body;
+  errorMessage = "Translation needs a network build (no libcurl)";
+  return false;
+#else
   CURL* curl = curl_easy_init();
   if (!curl) {
     errorMessage = tr(STR_TRANSLATION_FAILED);
@@ -243,6 +256,7 @@ bool EpubReaderTranslationActivity::callGeminiApi(const std::string& apiKey) {
     return false;
   }
   return true;
+#endif
 }
 
 void EpubReaderTranslationActivity::onWifiComplete(bool) {}

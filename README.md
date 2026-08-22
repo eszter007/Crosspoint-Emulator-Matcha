@@ -4,11 +4,20 @@ A fork of [jonmooreai/Crosspoint-Emulator](https://github.com/jonmooreai/Crosspo
 
 The emulator runs the [Crosspoint](https://github.com/crosspoint-reader/crosspoint-reader) e-reader firmware on your Mac or PC using an SDL2 window, directory-backed SD card, and keyboard input. This fork targets the [Matcha Reader](https://github.com/eszter007/matcha-reader), a Japanese-enabled Crosspoint firmware fork rather than mainline Crosspoint.
 
+It also simulates the **Xteink X4 Pro** — a touch device — and builds as an **iPhone app**, where the panel takes real touch input. See [Choosing a device](#choosing-a-device) and [docs/ios.md](docs/ios.md).
+
 ---
 
 ## What this fork adds
 
 The upstream emulator ([jonmooreai/Crosspoint-Emulator](https://github.com/jonmooreai/Crosspoint-Emulator)) already provides a complete desktop emulator with a library grid, thumbnail prewarm, UX polish (button press feedback, centralized constants), and detailed build documentation. This fork does not change any of that. It improves support for rendering the Japanese language learning fork [Matcha Reader](https://github.com/eszter007/matcha-reader).
+
+On top of that, this fork adds:
+
+- **Real board profiles.** The emulator reads the FreeInk SDK's `BoardConfig` instead of a hand-written stub, so the simulated device gets the same screen size, bezel insets, UI scale, button set, touch panel and frontlight the firmware sees on hardware.
+- **The Xteink X4 Pro**, selectable at configure time — a touch board with a capacitive Home key, two page keys, and a warm/cool frontlight.
+- **Touch input**, classified against the SDK's own gesture thresholds, so taps, swipes and long presses behave as they do on the device.
+- **An iPhone build**, where the panel is driven by your finger. See [docs/ios.md](docs/ios.md).
 
 
 ---
@@ -17,7 +26,7 @@ The upstream emulator ([jonmooreai/Crosspoint-Emulator](https://github.com/jonmo
 
 ### Requirements
 
-- macOS or Linux (Windows: see upstream README)
+- macOS or Linux (Windows: see upstream README; iPhone: see [docs/ios.md](docs/ios.md))
 - C++17 compiler, CMake 3.16+, SDL2 2.x, Python 3, Git
 - libcurl (pre-installed on macOS; `libcurl4-openssl-dev` on Linux)
 
@@ -54,6 +63,23 @@ cmake ..
 cmake --build .
 cd ..
 ```
+
+#### Choosing a device
+
+The emulator simulates one board, chosen when you configure:
+
+| `-DCROSSPOINT_DEVICE=` | Board | Input |
+|---|---|---|
+| `x4` (default) | Xteink X4 | Six front/side buttons |
+| `x4pro` | Xteink X4 Pro | Touch panel, capacitive Home key, two page keys, frontlight |
+
+```sh
+cmake .. -DCROSSPOINT_DEVICE=x4pro
+```
+
+One device per build: the SDK refuses to mix MCU families in one binary, and the X4 (ESP32-C3) and X4 Pro (ESP32-S3) are different families. Use separate build directories to keep both around.
+
+The choice is not cosmetic. The board profile decides which buttons exist, whether there is a touch panel, the UI scale, and the bezel insets — so a simulated X4 Pro has **no Back or Confirm key**, exactly like the hardware, where both come from the touch panel and the Home key.
 
 ### 5. Set up the SD card directory
 
@@ -129,7 +155,33 @@ Place `.cpfont` files in `sdcard/.fonts/`. The emulator runs with built-in fonts
 
 ---
 
-## Keyboard shortcuts
+## Input
+
+### Touch
+
+On a board with a touch panel (X4 Pro), click or drag on the panel with the mouse — or use a finger on iOS. Gestures are classified against the SDK's own thresholds, so what registers here registers on hardware:
+
+| Gesture | Threshold |
+|---------|-----------|
+| Tap | Released without travelling 60 px |
+| Swipe | 60 px within 700 ms |
+| Long press | Held 500 ms within 28 px |
+
+Hardware only notices a lift on its next I2C poll, so its contact durations always carry ~120 ms of hold-over. The emulator adds that to the measured duration rather than delaying the event — the swipe time window matches the device without the emulator feeling 120 ms laggier.
+
+Multi-touch is not simulated; nothing in the firmware's HAL exposes it.
+
+### On-screen keys
+
+Set `CROSSPOINT_EMU_CONTROLS=1` to draw the board's physical keys in a strip below the panel:
+
+```sh
+CROSSPOINT_EMU_CONTROLS=1 ./build/crosspoint_emulator
+```
+
+They are always on for iOS, where there is no keyboard. On desktop they are opt-in so the window stays exactly panel-sized. Which keys appear comes from the board profile — the X4 Pro shows its two page keys, Power and the Home ring; the X4 shows its full front-button set.
+
+### Keyboard shortcuts
 
 | Keys | Action |
 |------|--------|
@@ -137,8 +189,11 @@ Place `.cpfont` files in `sdcard/.fonts/`. The emulator runs with built-in fonts
 | Enter / Numpad Enter | Confirm |
 | Backspace / Escape | Back |
 | P | Power |
+| H | Capacitive Home key (boards that have one — X4 Pro) |
 | P + Down (hold) | **Firmware screenshot** — the device's own feature, so it also works on real hardware. Saves a BMP to `sdcard/screenshots/` and flashes a border to confirm. The filename carries the book title, chapter, page and progress when a book is open. |
 | Cmd + S (Ctrl + S on Linux) | **Emulator screenshot** — captures the panel exactly as shown, 480x800, no border flash and no window chrome, to `screenshots/` beside the binary. Useful for documentation images. |
+
+A key only does something if the simulated board actually has it. On the X4 Pro, Enter and Backspace do nothing: that board wires no Confirm or Back button, and both come from touch and the Home key instead.
 
 ### Waking from sleep
 
@@ -150,22 +205,32 @@ Sleep mode has no real low-power state on desktop, so the simulated "deep sleep"
 
 The emulator runs the firmware source unchanged, replacing hardware components with desktop equivalents:
 
-| Component  | Device                    | Emulator                        |
-|------------|---------------------------|---------------------------------|
-| Display    | 800×480 e-ink             | SDL2 window                     |
-| Storage    | SD card                   | `./sdcard/` directory           |
-| Input      | Physical buttons          | Keyboard                        |
-| Images     | On-device JPEG/PNG decode | stb_image                       |
-| Network    | ESP32 WiFi + HTTP         | libcurl (translation only)      |
-| Dictionary | SD card binary index      | Same (via simulated SD)         |
+| Component   | Device                    | Emulator                                    |
+|-------------|---------------------------|---------------------------------------------|
+| Display     | 800×480 e-ink             | SDL2 window (iOS: the phone screen)         |
+| Storage     | SD card                   | `./sdcard/` (iOS: the app's Documents)      |
+| Buttons     | Physical buttons          | Keyboard, and the on-screen strip           |
+| Touch       | GT911 capacitive panel    | Mouse or finger, same gesture thresholds    |
+| Board       | Pinout, screen, capabilities | The SDK's real `BoardConfig` profile     |
+| Frontlight  | Warm/cool PWM LEDs        | A tint over the panel                       |
+| Images      | On-device JPEG/PNG decode | stb_image                                   |
+| Network     | ESP32 WiFi + HTTP         | libcurl (translation only; absent on iOS)   |
+| Dictionary  | SD card binary index      | Same (via simulated SD)                     |
+
+Because the board profile is the SDK's own, the firmware adapts to the simulated device the same way it adapts to hardware: the X4 draws button hints along the bottom of the page, the X4 Pro drops them and scales its chrome up for fingers.
 
 ### Key directories
 
 ```
 Crosspoint-Emulator/
   CMakeLists.txt                   # Build configuration (modified from upstream)
-  sim/src/                         # Emulator HAL — unchanged from upstream
-  sim/include/                     # Emulator HAL headers — unchanged from upstream
+  sim/src/                         # Emulator HAL
+    sim_window.cpp                 #   Window, scaling, on-screen keys, event routing
+    sim_gpio.cpp                   #   Buttons + the touch gesture classifier
+    sim_display.cpp                #   EInkDisplay / HalDisplay on top of sim_window
+  sim/include/                     # Emulator HAL headers
+  sim/ios/                         # iPhone app: Info.plist, launch screen, UIKit glue
+  docs/ios.md                      # Building and running on an iPhone
   sdcard/                          # Simulated SD card root
     dict/                          # Dictionary indexes (jmdict, jmnedict, grammar)
     gemini.key                     # Gemini API key (optional)
@@ -195,7 +260,13 @@ Crosspoint-Emulator/
 
 **Terminal is noisy with `[DBG]`/`[INF]` log lines** — Debug logging (`ENABLE_SERIAL_LOG`, `LOG_LEVEL=2`) is on by default in this fork's `CMakeLists.txt`, useful for diagnosing emulator-specific issues. Lower `LOG_LEVEL` to `1` (errors + info) or `0` (errors only) there if you want quieter output.
 
-**SDL2 not found** — `brew install sdl2` (macOS) or `apt install libsdl2-dev` (Linux).
+**SDL2 not found** — `brew install sdl2` (macOS) or `apt install libsdl2-dev` (Linux). For iOS, SDL2 is built from source instead; see [docs/ios.md](docs/ios.md).
+
+**Enter / Backspace do nothing** — You are running the X4 Pro, which has no Confirm or Back button. Use the touch panel and the Home key (`H`, or the ring in the on-screen strip). This matches the hardware.
+
+**Switching `CROSSPOINT_DEVICE` seems not to take** — CMake caches it. Use a fresh build directory per device rather than reconfiguring in place.
+
+**Cached page layouts look wrong after switching device** — The X4 and X4 Pro have different bezel insets and UI scale, so their layouts differ. Delete `sdcard/.crosspoint/` after switching.
 
 **File Transfer / WiFi Setup / KOReader Sync / OPDS / Calibre Connect / Firmware Update show "Not available in the emulator"** — Expected. These activities need real WiFi/HTTP hardware and are excluded from the emulator build (see `sim/src/excluded_activity_stubs.cpp`); the stub screen exists so entering them doesn't silently freeze — press **Back** to return home. They work normally on real hardware.
 

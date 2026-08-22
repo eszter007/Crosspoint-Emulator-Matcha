@@ -2,6 +2,7 @@
 #include "ArduinoStub.h"
 #include "SdFat.h"
 #include "sim_spi_bus.h"
+#include "sim_window.h"
 #include "WString.h"
 
 #include <algorithm>
@@ -266,6 +267,15 @@ SDCardManager SDCardManager::instance;
 SDCardManager::SDCardManager() = default;
 
 bool SDCardManager::begin() {
+  // A platform may own the location (iOS: the app's Documents directory, the
+  // only writable one it has).
+  if (const char* platformRoot = sim_platform_sdcard_root()) {
+    FsFile::setRootPath(platformRoot);
+    Serial.printf("[%lu] [SD] Sim SD card %s\n", millis(), platformRoot);
+    initialized = true;
+    return initialized;
+  }
+
   // Use absolute path so directory listing works regardless of process cwd (e.g. when run from build/)
   char resolved[PATH_MAX];
   if (realpath("./sdcard", resolved) != nullptr) {

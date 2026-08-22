@@ -45,12 +45,29 @@ void vSemaphoreDelete(SemaphoreHandle_t m);
 
 void vTaskDelay(unsigned ms);
 
+// Critical sections. FreeRTOS tasks are real threads here (see
+// sim/src/freertos_stub.cpp), so the sections the firmware uses to publish a
+// struct atomically between the render task and the main loop protect a real
+// race in the emulator too -- these cannot be no-ops.
+//
+// portMUX_TYPE is an int, with no room for a lock, so every section takes one
+// process-wide recursive mutex instead of the per-spinlock exclusion the ESP
+// port gives. Coarser than the hardware, never weaker; the sections the
+// firmware puts under these are a few dozen bytes of copying.
+void simEnterCritical();
+void simExitCritical();
+
 #define taskENTER_CRITICAL(x) \
   do {                        \
     (void)(x);                \
+    simEnterCritical();       \
   } while (0)
 
 #define taskEXIT_CRITICAL(x) \
   do {                       \
     (void)(x);               \
+    simExitCritical();       \
   } while (0)
+
+#define portENTER_CRITICAL(x) taskENTER_CRITICAL(x)
+#define portEXIT_CRITICAL(x) taskEXIT_CRITICAL(x)

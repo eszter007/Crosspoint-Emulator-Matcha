@@ -205,3 +205,12 @@ BaseType_t xQueuePeek(SemaphoreHandle_t q, void*, TickType_t) {
 }
 
 void vSemaphoreDelete(SemaphoreHandle_t m) { delete static_cast<SimMutex*>(m); }
+
+namespace {
+// Recursive: the firmware nests a critical section inside another in at least
+// one path, and re-entering a plain mutex from the same thread would deadlock.
+std::recursive_mutex g_criticalMutex;
+}  // namespace
+
+void simEnterCritical() { g_criticalMutex.lock(); }
+void simExitCritical() { g_criticalMutex.unlock(); }

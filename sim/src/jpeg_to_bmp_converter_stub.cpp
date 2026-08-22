@@ -165,13 +165,19 @@ bool JpegToBmpConverter::jpegFileToBmpStreamWithSize(HalFile& jpegFile, Print& b
 
 bool JpegToBmpConverter::jpegFileTo1BitBmpStreamWithSize(HalFile& jpegFile, Print& bmpOut,
                                                           int targetWidth, int targetHeight,
-                                                          BmpConvertCancelFn shouldCancel, void* cancelCtx) {
+                                                          BmpConvertCancelFn shouldCancel, void* cancelCtx,
+                                                          bool* outUnsupported) {
+  // Left alone deliberately: the stb-based desktop decoder has no size ceiling, so no failure
+  // here is the permanent "will never convert" case the flag records. Leaving it unset keeps
+  // every failure retryable.
+  (void)outUnsupported;
   return jpegToBmpInternal(jpegFile, bmpOut, targetWidth, targetHeight, true, true, shouldCancel, cancelCtx);
 }
 
 bool JpegToBmpConverter::jpegFileToBmpStreamInternal(HalFile& jpegFile, Print& bmpOut,
                                                       int targetWidth, int targetHeight,
                                                       bool oneBit, bool crop, BmpConvertCancelFn shouldCancel,
-                                                      void* cancelCtx) {
+                                                      void* cancelCtx, bool* outUnsupported) {
+  (void)outUnsupported;
   return jpegToBmpInternal(jpegFile, bmpOut, targetWidth, targetHeight, oneBit, crop, shouldCancel, cancelCtx);
 }

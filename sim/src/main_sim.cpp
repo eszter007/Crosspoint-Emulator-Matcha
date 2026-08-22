@@ -6,8 +6,10 @@
 #include <Epub.h>
 #include <HardwareSerial.h>
 #include <SDCardManager.h>
+#include <SDL_main.h>
 #include <SdFat.h>
 #include "sim_display.h"
+#include "sim_window.h"
 
 #include <atomic>
 #include <cctype>
@@ -100,8 +102,9 @@ int main(int argc, char** argv) {
   // instead of sitting in the buffer until it fills or the process exits.
   setvbuf(stdout, nullptr, _IOLBF, 0);
 
-  // Ensure ./sdcard is findable: if run from build/, chdir to project root
-  if (access("./sdcard", F_OK) != 0 && access("../sdcard", F_OK) == 0) {
+  // Ensure ./sdcard is findable: if run from build/, chdir to project root.
+  // Skipped where the platform owns the card's location (iOS: Documents).
+  if (sim_platform_sdcard_root() == nullptr && access("./sdcard", F_OK) != 0 && access("../sdcard", F_OK) == 0) {
     if (chdir("..") != 0) {
       fprintf(stderr, "Could not chdir to project root (../sdcard)\n");
     }
@@ -127,6 +130,9 @@ int main(int argc, char** argv) {
       break;
     }
     loop();
+    // The firmware renders on a task thread, which cannot draw; this puts
+    // whatever it published on screen.
+    sim_window_service();
   }
 
   sim_display_shutdown();

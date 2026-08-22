@@ -32,6 +32,14 @@ class HalDisplay {
   bool supportsAsyncRefresh() const;
   void displayGrayscaleBase(RefreshMode fallback = HALF_REFRESH, bool turnOffScreen = false);
   void refreshDisplay(RefreshMode mode = FAST_REFRESH, bool turnOffScreen = false);
+
+  // Output polarity (night mode). As on hardware the framebuffer stays in
+  // normal polarity; the inversion is applied on the way to the panel, which
+  // here means on the way into the SDL texture.
+  void setInverted(bool inverted);
+  bool toggleInverted();
+  bool isInverted() const;
+
   void deepSleep();
 
   // Real-hardware waveform preconditioning before a grayscale pass; no-op in sim.
@@ -50,6 +58,9 @@ class HalDisplay {
 
   void writeGrayscalePlaneStrip(bool lsbPlane, const uint8_t* rows, uint16_t yStart, uint16_t numRows);
   bool supportsStripGrayscale() const;
+  // True when the panel drives the B/W base and the grayscale planes in one
+  // waveform (Paper Mono). The emulated panels do not.
+  bool combinesGrayscaleBase() const;
 
   uint16_t getDisplayWidth() const;
   uint16_t getDisplayHeight() const;

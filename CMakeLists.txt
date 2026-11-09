@@ -53,6 +53,8 @@ set(SIM_SOURCES
   sim/src/arduino_stub.cpp
   sim/src/esp_stub.cpp
   sim/src/battery_stub.cpp
+  sim/src/frontlight_stub.cpp
+  sim/src/freeink_sdk_stub.cpp
   sim/src/wifi_stub.cpp
   sim/src/freertos_stub.cpp
   sim/src/mdns_stub.cpp
@@ -183,6 +185,10 @@ target_compile_definitions(crosspoint_emulator PRIVATE
   USE_UTF8_LONG_NAMES=1
   ENABLE_SERIAL_LOG=1
   LOG_LEVEL=2
+  # The emulator models the 800x480 Xteink X4 panel, so it builds as that
+  # compatibility class. FirmwareBoardTag derives the board name from this and
+  # #errors out if no FREEINK_DEVICE_* flag is set.
+  FREEINK_DEVICE_X4=1
 )
 
 

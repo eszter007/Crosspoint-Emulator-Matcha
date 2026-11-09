@@ -70,13 +70,32 @@ static void writeBmpHeader2bit(Print& bmpOut, int width, int height) {
 static bool jpegToBmpInternal(HalFile& jpegFile, Print& bmpOut,
                                int targetWidth, int targetHeight,
                                bool oneBit, bool crop, BmpConvertCancelFn shouldCancel = nullptr,
-                               void* cancelCtx = nullptr) {
+                               void* cancelCtx = nullptr, bool* outUnsupported = nullptr) {
+  if (outUnsupported) *outUnsupported = false;
+
   // Read entire JPEG into memory
   const int fileSize = jpegFile.size();
   if (fileSize <= 0) return false;
   std::vector<uint8_t> buf(fileSize);
   const int bytesRead = jpegFile.read(buf.data(), fileSize);
   if (bytesRead <= 0) return false;
+
+  // Same limits as the device decoder. Only a source image past them is
+  // PERMANENTLY unconvertible -- that is the sole condition allowed to raise
+  // outUnsupported, so the caller may record it. Every other failure below
+  // (short read, decode error, cancellation) is "not right now" and must stay
+  // retryable. Dimensions come from the header so an oversized image is
+  // rejected before it is decoded, as on device.
+  constexpr int MAX_IMAGE_WIDTH = 2048;
+  constexpr int MAX_IMAGE_HEIGHT = 3072;
+  int infoW = 0, infoH = 0, infoC = 0;
+  if (stbi_info_from_memory(buf.data(), fileSize, &infoW, &infoH, &infoC) &&
+      (infoW <= 0 || infoH <= 0 || infoW > MAX_IMAGE_WIDTH || infoH > MAX_IMAGE_HEIGHT)) {
+    Serial.printf("[JPG] Image too large or invalid (%dx%d), max supported: %dx%d\n", infoW, infoH, MAX_IMAGE_WIDTH,
+                  MAX_IMAGE_HEIGHT);
+    if (outUnsupported) *outUnsupported = true;
+    return false;
+  }
 
   int srcW = 0, srcH = 0, channels = 0;
   unsigned char* pixels = stbi_load_from_memory(buf.data(), fileSize,
@@ -165,13 +184,16 @@ bool JpegToBmpConverter::jpegFileToBmpStreamWithSize(HalFile& jpegFile, Print& b
 
 bool JpegToBmpConverter::jpegFileTo1BitBmpStreamWithSize(HalFile& jpegFile, Print& bmpOut,
                                                           int targetWidth, int targetHeight,
-                                                          BmpConvertCancelFn shouldCancel, void* cancelCtx) {
-  return jpegToBmpInternal(jpegFile, bmpOut, targetWidth, targetHeight, true, true, shouldCancel, cancelCtx);
+                                                          BmpConvertCancelFn shouldCancel, void* cancelCtx,
+                                                          bool* outUnsupported) {
+  return jpegToBmpInternal(jpegFile, bmpOut, targetWidth, targetHeight, true, true, shouldCancel, cancelCtx,
+                           outUnsupported);
 }
 
 bool JpegToBmpConverter::jpegFileToBmpStreamInternal(HalFile& jpegFile, Print& bmpOut,
                                                       int targetWidth, int targetHeight,
                                                       bool oneBit, bool crop, BmpConvertCancelFn shouldCancel,
-                                                      void* cancelCtx) {
-  return jpegToBmpInternal(jpegFile, bmpOut, targetWidth, targetHeight, oneBit, crop, shouldCancel, cancelCtx);
+                                                      void* cancelCtx, bool* outUnsupported) {
+  return jpegToBmpInternal(jpegFile, bmpOut, targetWidth, targetHeight, oneBit, crop, shouldCancel, cancelCtx,
+                           outUnsupported);
 }

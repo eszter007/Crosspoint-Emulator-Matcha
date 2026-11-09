@@ -10,6 +10,18 @@
 #include "SdFat.h"
 #include "WString.h"
 
+// Mirrors hal/HalStorage.h. UsbDriveActivity aliases this as its State enum,
+// so the emulator needs the type even though it never exposes a mass-storage
+// gadget -- usbDriveState() below always reports Unsupported.
+enum class UsbDriveState : uint8_t {
+  Unsupported,
+  WaitingForHost,
+  Connected,
+  Ejected,
+  Disconnected,
+  IoError,
+};
+
 class HalFile : public Print {
  public:
   HalFile() : file_() {}
@@ -60,6 +72,12 @@ class HalFile : public Print {
 class HalStorage {
  public:
   bool begin() { return SdMan.begin(); }
+  // No USB mass-storage gadget on the host: starting one always fails and the
+  // state stays Unsupported, which is what UsbDriveActivity renders.
+  bool beginUsbDrive() { return false; }
+  bool disconnectUsbDriveHost() { return false; }
+  void endUsbDrive() {}
+  UsbDriveState usbDriveState() const { return UsbDriveState::Unsupported; }
   bool ready() const { return SdMan.ready(); }
   HalFile open(const char* path, oflag_t oflag = O_RDONLY) { return HalFile(SdMan.open(path, oflag)); }
   bool exists(const char* path) { return SdMan.exists(path); }

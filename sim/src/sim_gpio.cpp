@@ -101,11 +101,21 @@ bool HalGPIO::wasSwipe(float&, float&, float&, float&) const { return false; }
 bool HalGPIO::wasTouchActivity() const { return false; }
 void HalGPIO::setSharedConfirmPowerShortPressEmitsPower(bool) {}
 
-bool HalGPIO::verifyPowerButtonWakeup(uint16_t requiredDurationMs, bool shortPressAllowed) {
-  (void)requiredDurationMs;
-  (void)shortPressAllowed;
-  return true;
-}
+// Board-shape queries. The emulator models the X4's four front buttons plus the
+// two side keys, with no touch panel and no capacitive home key, so the
+// touch-only inputs below never fire.
+bool HalGPIO::isXteinkDevice() const { return true; }
+bool HalGPIO::hasEdgeSideButtons() const { return true; }
+bool HalGPIO::hasHomeKey() const { return false; }
+bool HalGPIO::wasHomeKeyTapped() const { return false; }
+bool HalGPIO::wasHomeKeyLongPressed() const { return false; }
+bool HalGPIO::wasTouchReleased() const { return false; }
+bool HalGPIO::wasTouchLongPress(float&, float&) const { return false; }
+void HalGPIO::suppressTouchContact() {}
+
+// No physical power button to re-sample on the host, so the wake always
+// verifies and the emulator continues booting rather than going back to sleep.
+bool HalGPIO::verifyPowerButtonWakeup() { return true; }
 
 bool HalGPIO::isUsbConnected() const { return true; }
 

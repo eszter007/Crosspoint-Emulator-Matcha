@@ -71,11 +71,16 @@ class Print {
   }
 };
 
+// Defined in WString.h, which includes this header for Print -- so the
+// readStringUntil overloads below are declared here and defined in
+// arduino_stub.cpp, once String is a complete type.
+class String;
+
 class Stream : public Print {
  public:
   virtual int available() { return 0; }
   virtual int read() { return -1; }
-  std::string readStringUntil(char) { return ""; }
+  String readStringUntil(char);
   virtual int peek() { return -1; }
   size_t write(uint8_t c) override { return 0; }
 };
@@ -87,7 +92,7 @@ class SerialStub : public Print {
   operator bool() const { return true; }
   int available() const { return 0; }
   int read() { return -1; }
-  std::string readStringUntil(char) { return ""; }
+  String readStringUntil(char);
   size_t write(uint8_t c) override {
     putchar(static_cast<char>(c));
     return 1;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 
 using TaskHandle_t = void*;
@@ -7,7 +8,15 @@ using SemaphoreHandle_t = void*;
 using BaseType_t = int;
 using UBaseType_t = unsigned;
 using TickType_t = uint32_t;
-using portMUX_TYPE = int;
+// The emulator runs FreeRTOS tasks as real std::threads, so a critical section
+// has to be genuine mutual exclusion -- a no-op would let the render task read a
+// half-published struct, the very race the firmware uses these for. ESP-IDF's
+// portENTER_CRITICAL is a spinlock plus an interrupt disable; the spinlock is
+// the part that has meaning on the host, and the guarded regions are a few
+// dozen bytes, so spinning is cheaper than a mutex.
+struct portMUX_TYPE {
+  std::atomic<bool> locked{false};
+};
 
 enum eNotifyAction {
   eNoAction = 0,
@@ -22,7 +31,14 @@ constexpr BaseType_t pdTRUE = 1;
 constexpr BaseType_t pdPASS = 1;
 constexpr TickType_t portMAX_DELAY = 0xFFFFFFFFu;
 constexpr int portTICK_PERIOD_MS = 1;
-constexpr portMUX_TYPE portMUX_INITIALIZER_UNLOCKED = 0;
+#define portMUX_INITIALIZER_UNLOCKED \
+  {}
+
+inline void portENTER_CRITICAL(portMUX_TYPE* mux) {
+  while (mux->locked.exchange(true, std::memory_order_acquire)) {
+  }
+}
+inline void portEXIT_CRITICAL(portMUX_TYPE* mux) { mux->locked.store(false, std::memory_order_release); }
 
 int xTaskCreate(void (*fn)(void*), const char* name, unsigned stack, void* param, int prio,
                 TaskHandle_t* handle);

@@ -8,7 +8,11 @@ class String : public Print {
  public:
   String() : s_(), readPos_(0) {}
   String(const char* c) : s_(c ? c : ""), readPos_(0) {}
-  String(const std::string& s) : s_(s), readPos_(0) {}
+  // explicit: Arduino's String has no std::string constructor at all. Leaving
+  // it implicit here made every FsHelpers::has*Extension(std::string) call
+  // ambiguous between the string_view overload and the String one, which the
+  // device build never sees.
+  explicit String(const std::string& s) : s_(s), readPos_(0) {}
   String(char c) : s_(1, c), readPos_(0) {}
   String(int n) : s_(std::to_string(n)), readPos_(0) {}
   String(unsigned n) : s_(std::to_string(n)), readPos_(0) {}

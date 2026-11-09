@@ -73,6 +73,9 @@ void KOReaderAuthActivity::performAuthentication() {}
 void KOReaderAuthActivity::onEnter() { Activity::onEnter(); requestUpdate(); }
 void KOReaderAuthActivity::onExit() { Activity::onExit(); }
 
+KOReaderSyncActivity::KOReaderSyncActivity(GfxRenderer& r, MappedInputManager& m, const std::string&, int, int, int,
+                                           SavedProgressPosition, std::string, std::optional<uint16_t>)
+    : Activity("KOReaderSync", r, m), UiAppHost(r) {}
 void KOReaderSyncActivity::onEnter() { Activity::onEnter(); requestUpdate(); }
 void KOReaderSyncActivity::onExit() { Activity::onExit(); }
 void KOReaderSyncActivity::loop() { backPressedToExit(*this, mappedInput); }
@@ -80,6 +83,8 @@ void KOReaderSyncActivity::render(RenderLock&&) {
   renderNotAvailableInEmulator(renderer, mappedInput, "KOReader Sync");
 }
 
+OpdsBookBrowserActivity::OpdsBookBrowserActivity(GfxRenderer& r, MappedInputManager& m, OpdsServer)
+    : Activity("OpdsBookBrowser", r, m), UiAppHost(r) {}
 void OpdsBookBrowserActivity::loop() { backPressedToExit(*this, mappedInput); }
 void OpdsBookBrowserActivity::render(RenderLock&&) {
   renderNotAvailableInEmulator(renderer, mappedInput, "OPDS Browser");
@@ -94,6 +99,8 @@ void OtaUpdateActivity::render(RenderLock&&) {
   renderNotAvailableInEmulator(renderer, mappedInput, "Firmware Update");
 }
 
+WifiSelectionActivity::WifiSelectionActivity(GfxRenderer& r, MappedInputManager& m, bool autoConnect)
+    : Activity("WifiSelection", r, m), UiAppHost(r), allowAutoConnect(autoConnect) {}
 void WifiSelectionActivity::onEnter() { Activity::onEnter(); requestUpdate(); }
 void WifiSelectionActivity::onExit() { Activity::onExit(); }
 void WifiSelectionActivity::loop() { backPressedToExit(*this, mappedInput); }
@@ -112,11 +119,22 @@ void CalibreConnectActivity::onEnter() { Activity::onEnter(); requestUpdate(); }
 void CalibreConnectActivity::onExit() { Activity::onExit(); }
 
 static SdCardFontRegistry dummyRegistry;
+// FontDownloadActivity derives from UiListActivity, so the stub cannot define
+// loop() -- the base owns it and the subclass no longer declares one. Back is
+// handled in handleCustomInput(), the base's first loop hook, which keeps the
+// same "Back exits" behaviour as the plain-Activity stubs above. The remaining
+// definitions exist to satisfy the base's pure virtuals and complete the
+// vtable; the real implementations live in the excluded .cpp.
 FontDownloadActivity::FontDownloadActivity(GfxRenderer& r, MappedInputManager& m)
-    : Activity("FontDownload", r, m), fontInstaller_(dummyRegistry) {}
+    : UiListActivity("FontDownload", r, m), fontInstaller_(dummyRegistry) {}
 void FontDownloadActivity::onEnter() { Activity::onEnter(); requestUpdate(); }
 void FontDownloadActivity::onExit() { Activity::onExit(); }
-void FontDownloadActivity::loop() { backPressedToExit(*this, mappedInput); }
 void FontDownloadActivity::render(RenderLock&&) {
   renderNotAvailableInEmulator(renderer, mappedInput, "Font Download");
 }
+bool FontDownloadActivity::handleCustomInput() { return backPressedToExit(*this, mappedInput); }
+int FontDownloadActivity::listCount() const { return 0; }
+void FontDownloadActivity::buildScreen(UiScreen&) {}
+void FontDownloadActivity::activateIndex(int) {}
+freeink::ui::ListNav& FontDownloadActivity::activeNav() { return nav; }
+void FontDownloadActivity::onBackButton() { onGoHome(); }

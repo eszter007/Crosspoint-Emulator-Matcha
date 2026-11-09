@@ -20,6 +20,11 @@ class HalDisplay {
   static constexpr uint16_t DISPLAY_WIDTH_BYTES = EInkDisplay::DISPLAY_WIDTH_BYTES;
   static constexpr uint32_t BUFFER_SIZE = EInkDisplay::BUFFER_SIZE;
 
+  // Global black/white swap (Settings -> screenInverted). Applied when the
+  // framebuffer is blitted to the SDL window.
+  void setInverted(bool inverted);
+  bool isInverted() const;
+
   void clearScreen(uint8_t color = 0xFF) const;
   void drawImage(const uint8_t* imageData, uint16_t x, uint16_t y, uint16_t w, uint16_t h,
                  bool fromProgmem = false) const;
@@ -31,6 +36,7 @@ class HalDisplay {
   void waitRefreshComplete();
   bool supportsAsyncRefresh() const;
   void displayGrayscaleBase(RefreshMode fallback = HALF_REFRESH, bool turnOffScreen = false);
+  bool combinesGrayscaleBase() const;
   void refreshDisplay(RefreshMode mode = FAST_REFRESH, bool turnOffScreen = false);
   void deepSleep();
 

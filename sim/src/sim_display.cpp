@@ -18,6 +18,11 @@ static SDL_Renderer* g_renderer = nullptr;
 static SDL_Texture* g_texture = nullptr;
 
 namespace {
+// Settings -> screenInverted. On device the panel driver swaps black and white;
+// here the swap is applied as the framebuffer is blitted, so both the 1-bit and
+// the grayscale path go through it (255 - v keeps the 0/85/170/255 LUT values
+// inside the same set).
+bool g_inverted = false;
 bool g_hasBw = false;
 bool g_hasGrayLsb = false;
 bool g_hasGrayMsb = false;
@@ -46,7 +51,8 @@ void render_bw_to_texture(const uint8_t* buf) {
       const int count = remaining < 8 ? remaining : 8;
 
       for (int b = 0; b < count; b++) {
-        const uint8_t v = (byte & (0x80 >> b)) ? 255 : 0;
+        uint8_t v = (byte & (0x80 >> b)) ? 255 : 0;
+        if (g_inverted) v = 255 - v;
         const int rotY = xBase + b;
         const size_t off = static_cast<size_t>(rotY) * static_cast<size_t>(pitch) + static_cast<size_t>(rotX) * 3;
         pixels[off + 0] = v;
@@ -89,7 +95,8 @@ void render_gray_to_texture(const uint8_t* bw, const uint8_t* lsb, const uint8_t
       for (int b = 0; b < count; b++) {
         const uint8_t mask = 0x80 >> b;
         const int lutIdx = ((bwByte & mask) ? 4 : 0) | ((msbByte & mask) ? 2 : 0) | ((lsbByte & mask) ? 1 : 0);
-        const uint8_t v = grayLut[lutIdx];
+        uint8_t v = grayLut[lutIdx];
+        if (g_inverted) v = 255 - v;
         const int rotY = xBase + b;
         const size_t off = static_cast<size_t>(rotY) * static_cast<size_t>(pitch) + static_cast<size_t>(rotX) * 3;
         pixels[off + 0] = v;
@@ -231,6 +238,8 @@ HalDisplay::HalDisplay() : einkDisplay(0, 0, 0, 0, 0, 0) {}
 HalDisplay::~HalDisplay() = default;
 
 void HalDisplay::begin(bool) { einkDisplay.begin(); }
+void HalDisplay::setInverted(bool inverted) { g_inverted = inverted; }
+bool HalDisplay::isInverted() const { return g_inverted; }
 void HalDisplay::clearScreen(uint8_t color) const { einkDisplay.clearScreen(color); }
 void HalDisplay::drawImage(const uint8_t* d, uint16_t x, uint16_t y, uint16_t w, uint16_t h, bool pm) const {
   einkDisplay.drawImage(d, x, y, w, h, pm);
@@ -245,6 +254,10 @@ void HalDisplay::displayBuffer(RefreshMode mode, bool turnOffScreen) {
 void HalDisplay::displayBufferAsync(RefreshMode mode) { displayBuffer(mode); }
 void HalDisplay::waitRefreshComplete() {}
 bool HalDisplay::supportsAsyncRefresh() const { return false; }
+// The sim blits each pass straight to the SDL texture and never defers the
+// base activation the way Paper Mono's combined waveform does, so callers keep
+// using displayBuffer() for the base of a grayscale page.
+bool HalDisplay::combinesGrayscaleBase() const { return false; }
 void HalDisplay::displayGrayscaleBase(RefreshMode fallback, bool turnOffScreen) {
   einkDisplay.displayGrayscaleBase(static_cast<EInkDisplay::RefreshMode>(fallback), turnOffScreen);
 }
